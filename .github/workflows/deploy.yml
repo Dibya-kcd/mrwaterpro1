@@ -11,11 +11,13 @@ concurrency:
 
 jobs:
 # ══════════════════════════════════════════════════════════════════════════
-# JOB 1 — Build Flutter Web + Deploy to Firebase Hosting
+# JOB 1 — Build Flutter Web + Deploy to GitHub Pages
 # ══════════════════════════════════════════════════════════════════════════
   deploy-web:
-    name: 🌐 Web → Firebase Hosting
+    name: 🌐 Web → GitHub Pages
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
 
       - name: ⬇️ Checkout
@@ -32,15 +34,21 @@ jobs:
         run: flutter pub get
 
       - name: 🌐 Build Flutter Web
-        run: flutter build web --release --dart-define=FIREBASE_API_KEY="${{ secrets.FIREBASE_API_KEY }}" --dart-define=FIREBASE_AUTH_DOMAIN="${{ secrets.FIREBASE_AUTH_DOMAIN }}" --dart-define=FIREBASE_DATABASE_URL="${{ secrets.FIREBASE_DATABASE_URL }}" --dart-define=FIREBASE_PROJECT_ID="${{ secrets.FIREBASE_PROJECT_ID }}" --dart-define=FIREBASE_STORAGE_BUCKET="${{ secrets.FIREBASE_STORAGE_BUCKET }}" --dart-define=FIREBASE_MESSAGING_SENDER_ID="${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}" --dart-define=FIREBASE_APP_ID="${{ secrets.FIREBASE_APP_ID_WEB }}"
+        run: |
+          flutter build web --release --base-href "/mrwaterprov1/" \
+            --dart-define=FIREBASE_API_KEY="${{ secrets.FIREBASE_API_KEY }}" \
+            --dart-define=FIREBASE_AUTH_DOMAIN="${{ secrets.FIREBASE_AUTH_DOMAIN }}" \
+            --dart-define=FIREBASE_DATABASE_URL="${{ secrets.FIREBASE_DATABASE_URL }}" \
+            --dart-define=FIREBASE_PROJECT_ID="${{ secrets.FIREBASE_PROJECT_ID }}" \
+            --dart-define=FIREBASE_STORAGE_BUCKET="${{ secrets.FIREBASE_STORAGE_BUCKET }}" \
+            --dart-define=FIREBASE_MESSAGING_SENDER_ID="${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}" \
+            --dart-define=FIREBASE_APP_ID="${{ secrets.FIREBASE_APP_ID_WEB }}"
 
-      - name: 🚀 Deploy to Firebase
-        uses: FirebaseExtended/action-hosting-deploy@v0
+      - name: 🚀 Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          channelId: live
-          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+          folder: build/web
+          branch: gh-pages
 
 # ══════════════════════════════════════════════════════════════════════════
 # JOB 2 — Build Android APK
