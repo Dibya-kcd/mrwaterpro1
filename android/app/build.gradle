@@ -44,7 +44,13 @@ if (hasKeystore) {
 // This prevents build failure on GitHub Actions if secrets aren't set up yet.
 def storeFileExists = false
 if (hasKeystore && keystoreProperties['storeFile']) {
-    storeFileExists = file(keystoreProperties['storeFile']).exists()
+    try {
+        def sf = file(keystoreProperties['storeFile'])
+        storeFileExists = sf.exists()
+    } catch (Exception e) {
+        // If file path is invalid (like a Windows path on Linux), ignore it
+        storeFileExists = false
+    }
 }
 def canSignRelease = hasKeystore && storeFileExists
 
