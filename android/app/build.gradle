@@ -126,7 +126,7 @@ dependencies {
     // Core library desugaring — enables java.time on API < 26
     coreLibraryDesugaring 'com.android.tools.build:desugaring:2.0.4'
 
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.10"
 
     // Firebase BoM — manages all Firebase SDK versions consistently
     implementation platform('com.google.firebase:firebase-bom:33.5.1')
