@@ -40,6 +40,14 @@ if (hasKeystore) {
     }
 }
 
+// 🔐 CI/CD Secret Bypass — Only use keystore if the file actually exists on disk
+// This prevents build failure on GitHub Actions if secrets aren't set up yet.
+def storeFileExists = false
+if (hasKeystore && keystoreProperties['storeFile']) {
+    storeFileExists = file(keystoreProperties['storeFile']).exists()
+}
+def canSignRelease = hasKeystore && storeFileExists
+
 android {
     namespace "com.mrwater.mrwaterprov1"
     compileSdk 34
@@ -75,11 +83,11 @@ android {
 
     // ── Release signing config ─────────────────────────────────────────────────
     signingConfigs {
-        if (hasKeystore) {
+        if (canSignRelease) {
             release {
                 keyAlias keystoreProperties['keyAlias']
                 keyPassword keystoreProperties['keyPassword']
-                storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+                storeFile file(keystoreProperties['storeFile'])
                 storePassword keystoreProperties['storePassword']
             }
         }
@@ -94,7 +102,7 @@ android {
         release {
             // Use release keystore if configured, otherwise fall back to debug key
             // (debug key APKs work but cannot be published to Play Store)
-            if (hasKeystore) {
+            if (canSignRelease) {
                 signingConfig signingConfigs.release
             } else {
                 signingConfig signingConfigs.debug
