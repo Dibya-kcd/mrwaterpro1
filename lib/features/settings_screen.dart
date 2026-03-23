@@ -768,7 +768,7 @@ class _Toggle extends StatelessWidget {
           Text(subtitle!, style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted, height: 1.4)),
       ])),
       Switch.adaptive(value: value, onChanged: onChanged,
-          activeThumbColor: Colors.white,
+          thumbColor: const WidgetStatePropertyAll(Colors.white),
           activeTrackColor: Theme.of(context).colorScheme.primary),
     ]),
   );
