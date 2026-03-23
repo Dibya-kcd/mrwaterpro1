@@ -54,16 +54,17 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 class FirebaseConfig {
   FirebaseConfig._();
 
-  // ── Hardcoded Firebase Configuration ──────────────────────────────────────
-  // These are now hardcoded to bypass the need for --dart-define secrets in GitHub.
-  static const _apiKey      = 'AIzaSyDr6JHIReYMAT-gff_OZZtU2aaAj0zt2ho';
-  static const _authDomain  = 'mrwaterprov1-54c3f.firebaseapp.com';
-  static const databaseUrl  = 'https://mrwaterprov1-54c3f-default-rtdb.firebaseio.com';
-  static const projectId    = 'mrwaterprov1-54c3f';
-  static const _storage     = 'mrwaterprov1-54c3f.firebasestorage.app';
-  static const _senderId    = '199429585160';
-  static const _appId       = '1:199429585160:web:919155f8d921ab0790d4bd';
-  static const _appIdAndroid = '1:199429585160:android:de08ce0929fc6f6190d4bd';
+  // ── Read from --dart-define at compile time ───────────────────────────────
+  // These are baked into the binary at build time — not readable as plain text
+  // in the compiled output (unlike a .env file bundled as an asset).
+  static const _apiKey      = String.fromEnvironment('FIREBASE_API_KEY');
+  static const _authDomain  = String.fromEnvironment('FIREBASE_AUTH_DOMAIN');
+  static const databaseUrl  = String.fromEnvironment('FIREBASE_DATABASE_URL');
+  static const projectId    = String.fromEnvironment('FIREBASE_PROJECT_ID');
+  static const _storage     = String.fromEnvironment('FIREBASE_STORAGE_BUCKET');
+  static const _senderId    = String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID');
+  static const _appId       = String.fromEnvironment('FIREBASE_APP_ID');
+  static const _appIdAndroid = String.fromEnvironment('FIREBASE_APP_ID_ANDROID');
 
   // ── RTDB node paths ───────────────────────────────────────────────────────
   static const nodeSettings           = 'settings';
