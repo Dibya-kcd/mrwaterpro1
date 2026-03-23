@@ -33,8 +33,12 @@ jobs:
       - name: 📦 Flutter pub get
         run: flutter pub get
 
-      - name: 🌐 Build Flutter Web
+      - name: 🔍 Verify Secrets and Build Web
         run: |
+          if [ -z "${{ secrets.FIREBASE_API_KEY }}" ]; then
+            echo "❌ ERROR: FIREBASE_API_KEY is missing in GitHub Secrets!"
+            exit 1
+          fi
           cat > dart_defines.json << EOF
           {
             "FIREBASE_API_KEY": "${{ secrets.FIREBASE_API_KEY }}",
@@ -83,8 +87,12 @@ jobs:
       - name: 📦 Flutter pub get
         run: flutter pub get
 
-      - name: 🔨 Build APK
+      - name: � Verify Secrets and Build APK
         run: |
+          if [ -z "${{ secrets.FIREBASE_API_KEY }}" ]; then
+            echo "❌ ERROR: FIREBASE_API_KEY is missing in GitHub Secrets!"
+            exit 1
+          fi
           cat > dart_defines.json << EOF
           {
             "FIREBASE_API_KEY": "${{ secrets.FIREBASE_API_KEY }}",
