@@ -1,0 +1,147 @@
+name: 🌐 Deploy Web + 📱 Build APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:   # allows manual trigger from GitHub Actions tab
+
+# ── Cancel any in-progress run for the same branch ───────────────────────────
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+# ════════════════════════════════════════════════════════════════════════════
+# JOB 1 — Build Flutter Web + Deploy to Firebase Hosting
+# ════════════════════════════════════════════════════════════════════════════
+  deploy-web:
+    name: 🌐 Web → Firebase Hosting
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Get dependencies
+        run: flutter pub get
+
+      - name: 🔍 Analyze code
+        run: flutter analyze --no-fatal-infos
+        continue-on-error: true   # don't block deploy on lint warnings
+
+      - name: 🌐 Build Flutter Web (release)
+        run: |
+          flutter build web --release \
+            --web-renderer canvaskit \
+            --dart-define=FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }} \
+            --dart-define=FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }} \
+            --dart-define=FIREBASE_DATABASE_URL=${{ secrets.FIREBASE_DATABASE_URL }} \
+            --dart-define=FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }} \
+            --dart-define=FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }} \
+            --dart-define=FIREBASE_MESSAGING_SENDER_ID=${{ secrets.FIREBASE_MESSAGING_SENDER_ID }} \
+            --dart-define=FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID_WEB }}
+
+      - name: 🚀 Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          channelId: live
+          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+
+# ════════════════════════════════════════════════════════════════════════════
+# JOB 2 — Build Android APK (release)
+# ════════════════════════════════════════════════════════════════════════════
+  build-apk:
+    name: 📱 Android APK
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Get dependencies
+        run: flutter pub get
+
+      - name: 🔐 Decode keystore from secret
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/mrwater-release.jks
+
+      - name: 📝 Write key.properties
+        run: |
+          cat > android/key.properties << EOF
+          storePassword=${{ secrets.KEYSTORE_STORE_PASSWORD }}
+          keyPassword=${{ secrets.KEYSTORE_KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEYSTORE_KEY_ALIAS }}
+          storeFile=mrwater-release.jks
+          EOF
+
+      - name: 📝 Write google-services.json
+        run: |
+          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > android/app/google-services.json
+
+      - name: 🔨 Build APK (release, split by ABI)
+        run: |
+          flutter build apk --release --split-per-abi \
+            --dart-define=FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }} \
+            --dart-define=FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }} \
+            --dart-define=FIREBASE_DATABASE_URL=${{ secrets.FIREBASE_DATABASE_URL }} \
+            --dart-define=FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }} \
+            --dart-define=FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }} \
+            --dart-define=FIREBASE_MESSAGING_SENDER_ID=${{ secrets.FIREBASE_MESSAGING_SENDER_ID }} \
+            --dart-define=FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID_ANDROID }}
+
+      - name: 📤 Upload APKs as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mrwater-apk-${{ github.run_number }}
+          path: |
+            build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+            build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+          retention-days: 30
+
+      - name: 🏷️ Create GitHub Release (on push to main only)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: "MrWater v2.1 — Build ${{ github.run_number }}"
+          body: |
+            ## 📱 MrWater APK — Build ${{ github.run_number }}
+            
+            ### Download
+            - **arm64-v8a** — Modern phones (recommended)
+            - **armeabi-v7a** — Older phones
+            
+            ### Install
+            1. Download the APK for your phone
+            2. Enable "Install from unknown sources" in Settings
+            3. Open the APK and tap Install
+          files: |
+            build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+            build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

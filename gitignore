@@ -2,12 +2,9 @@
 # .gitignore — MrWater Pro
 # ══════════════════════════════════════════════════════════════════════════════
 
-# ── Secrets (your existing entries — kept exactly) ────────────────────────────
+# ── Secrets — NEVER commit these ─────────────────────────────────────────────
 dart_defines.env
 lib/core/services/firebase_config.dart
-google-services.json
-
-# ── Additional secrets ────────────────────────────────────────────────────────
 android/app/google-services.json
 android/key.properties
 *.jks
@@ -34,6 +31,9 @@ ios/Pods/
 ios/.symlinks/
 ios/Flutter/flutter_export_environment.sh
 ios/Flutter/Generated.xcconfig
+
+# ── Web ───────────────────────────────────────────────────────────────────────
+build/web/
 
 # ── IDE ───────────────────────────────────────────────────────────────────────
 .idea/
