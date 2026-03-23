@@ -138,7 +138,7 @@ flutter {
 
 dependencies {
     // Core library desugaring — enables java.time on API < 26
-    coreLibraryDesugaring 'com.android.tools.build:desugaring:2.0.4'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.10"
 
