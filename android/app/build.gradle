@@ -77,9 +77,9 @@ android {
 
     defaultConfig {
         applicationId "com.mrwater.mrwaterprov1"
-        // Firebase RTDB and Google ML Kit require minSdk 21 minimum.
-        // speech_to_text and video_player also work best at 21+.
-        minSdk 21
+        // Firebase Auth requires minSdk 23+.
+        // speech_to_text and video_player also work best at 23+.
+        minSdk 23
         targetSdk 34
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
