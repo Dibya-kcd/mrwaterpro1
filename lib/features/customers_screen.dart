@@ -366,9 +366,8 @@ class _JarStatusTile extends StatelessWidget {
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         icon, const SizedBox(width: 6),
-        Expanded(child: Text(label, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600,
-            color: count > 0 ? color : AppColors.inkMuted),
-            overflow: TextOverflow.ellipsis)),
+        Text(label, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600,
+            color: count > 0 ? color : AppColors.inkMuted)),
       ]),
       const SizedBox(height: 6),
       Text('$count with customer', style: GoogleFonts.jetBrainsMono(fontSize: 13,
@@ -1109,7 +1108,7 @@ class _PriceOverrideRow extends StatelessWidget {
           style: GoogleFonts.inter(fontSize: 11, color: enabled ? color : AppColors.inkMuted)),
     ])),
     if (enabled)
-      SizedBox(width: 80, child: TextFormField(
+      SizedBox(width: 90, child: TextFormField(
         controller: ctrl,
         keyboardType: TextInputType.number,
         textAlign: TextAlign.center,
@@ -1124,8 +1123,9 @@ class _PriceOverrideRow extends StatelessWidget {
     Switch(
       value: enabled,
       onChanged: onToggle,
-      activeThumbColor: Colors.white,
-      activeTrackColor: color,
+      thumbColor: WidgetStateProperty.all(Colors.white),
+      trackColor: WidgetStateProperty.resolveWith((states) =>
+          states.contains(WidgetState.selected) ? color : null),
     ),
   ]);
 }
@@ -1173,7 +1173,7 @@ class _CustomerQuickSheet extends ConsumerWidget {
       ),
       const SizedBox(height: 10),
       _QBtn(
-        icon: Icons.swap_horiz_rounded,
+        icon: Icons.undo_rounded,
         label: 'Return Jars',
         sublabel: 'Collect jars back from customer',
         color: AppColors.inkMuted, isDark: isDark,
