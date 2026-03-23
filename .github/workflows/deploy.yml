@@ -89,10 +89,8 @@ jobs:
           name: "MrWater Build ${{ github.run_number }}"
           body: |
             ### Download APK
-            - **app-arm64-v8a-release.apk** — Modern phones (use this one)
-            - **app-armeabi-v7a-release.apk** — Older phones
+            - **app-release.apk** — Universal installer for all Android phones
           files: |
-            build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
-            build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+            build/app/outputs/flutter-apk/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
