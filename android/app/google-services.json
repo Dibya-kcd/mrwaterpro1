@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "199429585160",
+    "firebase_url": "https://mrwaterprov1-54c3f-default-rtdb.firebaseio.com",
+    "project_id": "mrwaterprov1-54c3f",
+    "storage_bucket": "mrwaterprov1-54c3f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:199429585160:android:de08ce0929fc6f6190d4bd",
+        "android_client_info": {
+          "package_name": "com.mrwater.mrwaterprov1"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "199429585160-9r7no26sm14ilmdoai4jfcufvqbo8c2v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyArDnXqUojZJVBUAcnW_QWIH3h57nBE6Ic"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "199429585160-9r7no26sm14ilmdoai4jfcufvqbo8c2v.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

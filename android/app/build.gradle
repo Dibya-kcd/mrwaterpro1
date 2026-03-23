@@ -107,15 +107,15 @@ android {
     }
 
     // ── Split APKs by ABI — reduces download size on Play Store ───────────────
-    // Comment this block out if you want a single fat APK
-    splits {
-        abi {
-            enable true
-            reset()
-            include "arm64-v8a", "armeabi-v7a", "x86_64"
-            universalApk true   // also produce a fat APK that works on all devices
-        }
-    }
+    // Commented out to produce a single universal APK
+    // splits {
+    //     abi {
+    //         enable true
+    //         reset()
+    //         include "arm64-v8a", "armeabi-v7a", "x86_64"
+    //         universalApk true   // also produce a fat APK that works on all devices
+    //     }
+    // }
 }
 
 flutter {
