@@ -13,8 +13,9 @@ dependencies:
 
   # ── Firebase ──────────────────────────────────────────────────────────────
   firebase_core: ^3.6.0
-  firebase_auth: ^5.3.1           # Authentication (email/password)
-  firebase_database: ^11.1.4      # Realtime Database
+  firebase_auth: ^5.3.1              # Authentication (email/password)
+  firebase_database: ^11.1.4         # Realtime Database
+  firebase_storage: ^12.3.4          # NEW — dynamic company logo URL upload
 
   # ── State management ──────────────────────────────────────────────────────
   flutter_riverpod: ^2.5.1
@@ -24,7 +25,7 @@ dependencies:
 
   # ── UI / fonts ────────────────────────────────────────────────────────────
   google_fonts: ^6.2.1
-  video_player: 2.8.2
+  # video_player removed — splash now uses pure Flutter animation
 
   # ── Utilities ─────────────────────────────────────────────────────────────
   uuid: ^4.4.2
@@ -36,10 +37,11 @@ dependencies:
   path_provider: ^2.1.4
   share_plus: ^10.0.3
 
+  # ── Media / OCR ───────────────────────────────────────────────────────────
   image_picker: ^1.0.7
   google_mlkit_text_recognition: ^0.13.0
 
-  # ── Voice input (Chrome Web Speech API) ───────────────────────────────────
+  # ── Voice input ───────────────────────────────────────────────────────────
   speech_to_text: ^6.6.2
 
 dev_dependencies:
@@ -52,4 +54,4 @@ flutter:
 
   assets:
     - assets/images/mrwater_logo.png
-    - assets/videos/splash_video.mp4
+    # splash_video.mp4 no longer needed — pure Flutter animation replaces video

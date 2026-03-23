@@ -867,23 +867,26 @@ class _BillingLabelRow extends StatelessWidget {
   Widget build(BuildContext context) => Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 100,
+          Flexible(
+            flex: 2,
             child: Text(label,
                 style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white70 : Colors.black87)),
+                    color: isDark ? Colors.white70 : Colors.black87),
+                overflow: TextOverflow.ellipsis),
           ),
           Text('$colon  ',
               style: GoogleFonts.inter(
                   fontSize: 13, color: AppColors.inkMuted)),
           Expanded(
+            flex: 3,
             child: Text(value,
                 style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : Colors.black87)),
+                    color: isDark ? Colors.white : Colors.black87),
+                overflow: TextOverflow.ellipsis),
           ),
         ],
       );

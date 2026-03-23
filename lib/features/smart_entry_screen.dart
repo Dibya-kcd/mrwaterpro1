@@ -490,9 +490,10 @@ class _CaptureView extends StatelessWidget {
             Row(children: [
               Icon(Icons.lightbulb_rounded, size: 16, color: primary),
               const SizedBox(width: 6),
-              Text('Tips for best results',
+              Expanded(child: Text('Tips for best results',
                   style: GoogleFonts.inter(
-                      fontSize: 13, fontWeight: FontWeight.w700, color: primary)),
+                      fontSize: 13, fontWeight: FontWeight.w700, color: primary),
+                  overflow: TextOverflow.ellipsis, maxLines: 1)),
             ]),
             const SizedBox(height: 10),
             ...const [

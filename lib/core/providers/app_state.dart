@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -55,6 +56,10 @@ class AppSettings {
   final bool gstEnabled, paymentAutoSync, auditLogEnabled;
   final double coolPrice, petPrice, transportFee, damageChargePerJar;
   final int lowStockThreshold, overdueDays;
+  /// Dynamic logo: URL (Firebase Storage / HTTPS) — takes priority over local path + default asset
+  final String logoUrl;
+  /// Dynamic logo: local device file path (picked via image_picker)
+  final String logoLocalPath;
 
   const AppSettings({
     this.appName = 'MrWater', this.businessName = 'Water Supply Co.',
@@ -66,6 +71,7 @@ class AppSettings {
     this.themeMode = 'system', this.accentColor = '1A6BFF',
     this.paymentAutoSync = true, this.auditLogEnabled = true,
     this.currency = '₹', this.dateFormat = 'dd MMM yyyy', this.invoicePrefix = 'MRW',
+    this.logoUrl = '', this.logoLocalPath = '',
   });
 
   Map<String, dynamic> toJson() => {
@@ -76,6 +82,7 @@ class AppSettings {
     'overdueDays': overdueDays, 'themeMode': themeMode, 'accentColor': accentColor,
     'paymentAutoSync': paymentAutoSync, 'auditLogEnabled': auditLogEnabled,
     'currency': currency, 'dateFormat': dateFormat, 'invoicePrefix': invoicePrefix,
+    'logoUrl': logoUrl, 'logoLocalPath': logoLocalPath,
   };
 
   factory AppSettings.fromJson(Map<String, dynamic> j) => AppSettings(
@@ -90,6 +97,7 @@ class AppSettings {
     paymentAutoSync: j['paymentAutoSync'] ?? true, auditLogEnabled: j['auditLogEnabled'] ?? true,
     currency: j['currency'] ?? '₹', dateFormat: j['dateFormat'] ?? 'dd MMM yyyy',
     invoicePrefix: j['invoicePrefix'] ?? 'MRW',
+    logoUrl: j['logoUrl'] ?? '', logoLocalPath: j['logoLocalPath'] ?? '',
   );
 
   AppSettings copyWith({
@@ -99,6 +107,7 @@ class AppSettings {
     int? lowStockThreshold, int? overdueDays, String? themeMode,
     String? accentColor, bool? paymentAutoSync, bool? auditLogEnabled,
     String? currency, String? dateFormat, String? invoicePrefix,
+    String? logoUrl, String? logoLocalPath,
   }) => AppSettings(
     appName: appName ?? this.appName, businessName: businessName ?? this.businessName,
     ownerName: ownerName ?? this.ownerName, phone: phone ?? this.phone,
@@ -111,6 +120,7 @@ class AppSettings {
     accentColor: accentColor ?? this.accentColor, paymentAutoSync: paymentAutoSync ?? this.paymentAutoSync,
     auditLogEnabled: auditLogEnabled ?? this.auditLogEnabled, currency: currency ?? this.currency,
     dateFormat: dateFormat ?? this.dateFormat, invoicePrefix: invoicePrefix ?? this.invoicePrefix,
+    logoUrl: logoUrl ?? this.logoUrl, logoLocalPath: logoLocalPath ?? this.logoLocalPath,
   );
 }
 
@@ -1722,6 +1732,11 @@ class StaffMember {
 
   bool can(String perm) => permissions.contains(perm);
 
+  // ── Owner check: null sessionUser = owner = full access ───────────────────
+  // This is only used for staff members. Owner always has sessionUser = null.
+  // If a StaffMember IS the owner (matched by Firebase UID), they should still
+  // use the null-session path, not this permission list.
+
   StaffMember copyWith({
     String? name, String? phone, String? pin,
     bool? isActive, List<String>? permissions,
@@ -1746,15 +1761,29 @@ class StaffMember {
 class StaffNotifier extends StateNotifier<List<StaffMember>> {
   StaffNotifier() : super([]) { Future.microtask(_init); }
 
+  StreamSubscription? _sub;
+
   void _init() {
-    FirebaseService.instance.watch(FirebaseConfig.nodeStaff).listen((data) {
+    _sub?.cancel();
+    final stream = FirebaseService.instance.watch(FirebaseConfig.nodeStaff);
+    // Stream.empty() is returned when CompanySession not yet init'd.
+    // In that case subscribe completes immediately — we need reinit() later.
+    _sub = stream.listen((data) {
+      if (!mounted) return;
       if (data != null) {
-        state = data.values.map((e) => StaffMember.fromJson(_castMap(e))).toList();
+        state = data.values
+            .map((e) => StaffMember.fromJson(_castMap(e)))
+            .toList();
       } else {
         state = [];
       }
     });
   }
+
+  /// Call this after CompanySession.init() to re-subscribe to Firebase.
+  /// Required because the initial subscription fires on Stream.empty()
+  /// when CompanySession wasn't ready at provider construction time.
+  void reinit() => _init();
 
   Future<void> add(StaffMember s) async {
     await FirebaseService.instance.setChild(FirebaseConfig.nodeStaff, s.id, s.toJson());
@@ -1771,6 +1800,12 @@ class StaffNotifier extends StateNotifier<List<StaffMember>> {
   StaffMember? byPin(String pin) {
     try { return state.firstWhere((s) => s.pin == pin && s.isActive); }
     catch (_) { return null; }
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
   }
 }
 

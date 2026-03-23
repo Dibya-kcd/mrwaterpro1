@@ -787,9 +787,11 @@ class _DetailRow extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 2),
     child: Row(children: [
-      Text(label, style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted)),
-      const Spacer(),
-      Text(value, style: GoogleFonts.jetBrainsMono(fontSize: 12, fontWeight: FontWeight.w600)),
+      Flexible(child: Text(label, style: GoogleFonts.inter(fontSize: 12, color: AppColors.inkMuted),
+          overflow: TextOverflow.ellipsis, maxLines: 1)),
+      const SizedBox(width: 8),
+      Text(value, style: GoogleFonts.jetBrainsMono(fontSize: 12, fontWeight: FontWeight.w600),
+          overflow: TextOverflow.ellipsis, maxLines: 1),
     ]),
   );
 }
@@ -821,7 +823,8 @@ class _HistoryChip extends StatelessWidget {
           maxLines: 1, overflow: TextOverflow.ellipsis,
         )),
         Text('by ${h.editedBy}',
-            style: GoogleFonts.inter(fontSize: 10, color: AppColors.inkMuted)),
+            style: GoogleFonts.inter(fontSize: 10, color: AppColors.inkMuted),
+            overflow: TextOverflow.ellipsis, maxLines: 1),
       ]),
     );
   }

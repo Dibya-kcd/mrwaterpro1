@@ -17,8 +17,7 @@ import 'reports_screen.dart';
 import 'notifications_screen.dart';
 import 'settings_screen.dart';
 import 'pin_lock_screen.dart';
-import 'mr_water_logo.dart';
-import 'company_login_screen.dart';
+import 'app_logo.dart';
 import 'voice_assistant.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -56,7 +55,7 @@ class MainScaffold extends ConsumerWidget {
       const StaffGuard(permission: 'payments',       child: PaymentsScreen()),
       const StaffGuard(permission: 'reports',        child: ReportsScreen()),
       const StaffGuard(permission: 'notifications',  child: NotificationsScreen()),
-      const SettingsScreen(),
+      const StaffGuard(permission: 'settings',       child: SettingsScreen()),
       StaffGuard(permission: 'load_unload',          child: LoadUnloadScreen()),
       const StaffGuard(permission: 'expenses',       child: ExpensesScreen()),
       const StaffGuard(permission: 'smart_entry',    child: SmartEntryScreen()),
@@ -160,7 +159,7 @@ class _MrAppBar extends ConsumerWidget implements PreferredSizeWidget {
 
         // MIDDLE — MrWater logo, big and prominent
         Expanded(child: Center(
-          child: MrWaterLogo(
+          child: AppLogo(
             height: compact ? 70.0 : 86.0,
             onDark: true,
           ),
@@ -281,22 +280,19 @@ class _ProfileSheet extends ConsumerWidget {
       ),
       const SizedBox(height: 10),
       TextButton(
-        onPressed: () async {
+        onPressed: () {
           Navigator.pop(context); // Close the sheet
-          final session = ref.read(sessionUserProvider);
-          if (session == null) {
-            // It's the owner/admin session — sign out of Firebase
-            await CompanySession.firebaseSignOut();
-          } else {
-            // It's a staff session — just go back to PIN screen
-            ref.read(sessionUserProvider.notifier).state = null;
-          }
+          // ── ROLE logout only — Firebase stays signed in ──────────────────
+          // Firebase sign-out is ONLY available from the hidden admin portal.
+          // In-app logout just clears the role session and returns to PIN.
+          ref.read(sessionUserProvider.notifier).state = null;
           ref.read(pinUnlockedProvider.notifier).state = false;
+          // _AppGate watches pinUnlockedProvider and switches to _Screen.pin
         },
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.logout_rounded, size: 16, color: AppColors.inkMuted),
+          Icon(Icons.switch_account_rounded, size: 16, color: AppColors.inkMuted),
           const SizedBox(width: 8),
-          Text(ref.read(sessionUserProvider) == null ? 'Sign Out (Admin)' : 'Logout / Switch User',
+          Text('Switch Role / Lock Screen',
               style: GoogleFonts.inter(fontSize: 13, color: AppColors.inkMuted)),
         ]),
       ),
@@ -349,7 +345,7 @@ const _navItems = <_NavItem>[
   _NavItem(kTabPayments,      Icons.account_balance_wallet_rounded, 'Payments',      'payments'),
   _NavItem(kTabExpenses,      Icons.money_off_rounded,              'Expenses',      'expenses'),
   _NavItem(kTabSmartEntry,    Icons.document_scanner_rounded,       'Smart Entry',   'smart_entry'),
-  _NavItem(kTabReports,       Icons.bar_chart_rounded,              'Reports',       'reports'),
+  _NavItem(kTabReports,       Icons.assessment_rounded,             'Reports',       'reports'),
   _NavItem(kTabNotifications, Icons.notifications_rounded,          'Notifications', 'notifications'),
   _NavItem(kTabSettings,      Icons.settings_rounded,               'Settings'),     // always visible
 ];
@@ -392,7 +388,7 @@ class _BurgerDrawer extends ConsumerWidget {
             ),
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              MrWaterLogo(height: 60, onDark: isDark),
+              AppLogo(height: 60, onDark: isDark),
               const SizedBox(height: 2),
               Text(settings.ownerName, style: GoogleFonts.inter(
                   fontSize: 12, color: AppColors.inkMuted),
@@ -447,7 +443,7 @@ class _BurgerDrawer extends ConsumerWidget {
         // Bottom version tag
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: Text('MrWater v1.0', style: GoogleFonts.jetBrainsMono(
+          child: Text('MrWater v2.0', style: GoogleFonts.jetBrainsMono(
               fontSize: 10, color: AppColors.inkMuted)),
         ),
       ])),
@@ -486,7 +482,7 @@ class _BottomNav extends ConsumerWidget {
             behavior: HitTestBehavior.opaque,
             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
               Icon(Icons.home_rounded,
-                  size: 26,
+                  size: 24,
                   color: tab == kTabDashboard ? primary : AppColors.inkMuted),
               const SizedBox(height: 2),
               Text('Home', style: GoogleFonts.inter(
@@ -525,7 +521,7 @@ class _BottomNav extends ConsumerWidget {
             behavior: HitTestBehavior.opaque,
             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
               Icon(Icons.notifications_rounded,
-                  size: 26,
+                  size: 24,
                   color: tab == kTabNotifications ? primary : AppColors.inkMuted),
               const SizedBox(height: 2),
               Text('Alerts', style: GoogleFonts.inter(
@@ -586,7 +582,7 @@ class _QuickSheet extends ConsumerWidget {
           }),
       const SizedBox(height: 10),
 
-      _QBtn(icon: Icons.undo_rounded, label: 'Return Jars',
+      _QBtn(icon: Icons.swap_horiz_rounded, label: 'Return Jars',
           sublabel: 'Collect jars back from customer',
           color: AppColors.inkMuted, isDark: isDark,
           onTap: () {
@@ -674,7 +670,7 @@ class _Sidebar extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 18, 12, 14),
           child: Center(
-            child: MrWaterLogo(
+            child: AppLogo(
               height: 58,
               onDark: isDark,
             ),

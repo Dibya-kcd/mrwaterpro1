@@ -2054,9 +2054,11 @@ class _CustPicker extends ConsumerWidget {
           Icon(Icons.people_rounded, size: 18, color: AppColors.inkMuted),
         const SizedBox(width: 10),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(name, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700)),
+          Text(name, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
+              overflow: TextOverflow.ellipsis, maxLines: 1),
           if (sub.isNotEmpty)
-            Text(sub, style: GoogleFonts.inter(fontSize: 11, color: AppColors.inkMuted)),
+            Text(sub, style: GoogleFonts.inter(fontSize: 11, color: AppColors.inkMuted),
+                overflow: TextOverflow.ellipsis, maxLines: 1),
         ])),
         if (sel) Icon(Icons.check_circle_rounded, size: 16, color: c),
       ]),
@@ -2372,10 +2374,12 @@ Widget _InvRow2Col(String label, String detail, String amount,
       Expanded(child: Text(label, style: GoogleFonts.inter(fontSize: 12, color:
           isDark ? AppColors.inkDark : AppColors.ink))),
       if (detail.isNotEmpty)
-        Text(detail, style: GoogleFonts.inter(fontSize: 11, color: AppColors.inkMuted)),
-      const SizedBox(width: 12),
+        Flexible(child: Text(detail, style: GoogleFonts.inter(fontSize: 11, color: AppColors.inkMuted),
+            overflow: TextOverflow.ellipsis, maxLines: 1)),
+      const SizedBox(width: 8),
       Text(amount, style: GoogleFonts.jetBrainsMono(fontSize: 12,
-          fontWeight: FontWeight.w600, color: c)),
+          fontWeight: FontWeight.w600, color: c),
+          overflow: TextOverflow.ellipsis, maxLines: 1),
     ]),
   );
 

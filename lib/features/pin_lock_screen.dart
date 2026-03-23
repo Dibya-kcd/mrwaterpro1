@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/providers/app_state.dart';
 import '../core/theme/app_colors.dart';
-import 'company_login_screen.dart';
 import 'mr_water_logo.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -27,11 +26,17 @@ import 'mr_water_logo.dart';
 // ══════════════════════════════════════════════════════════════════════════════
 
 class PinLockScreen extends ConsumerStatefulWidget {
-  /// Called when login succeeds.
-  /// isOwner=true → owner bypass (Firebase authed, no staff PIN)
-  /// isOwner=false → staff PIN match
+  /// Called when PIN/owner login succeeds.
+  /// isOwner=true → owner bypass; isOwner=false → staff PIN match
   final ValueChanged<bool> onUnlocked;
-  const PinLockScreen({super.key, required this.onUnlocked});
+  /// Called when user long-presses logo to open hidden admin portal
+  final VoidCallback? onOpenAdminPortal;
+
+  const PinLockScreen({
+    super.key,
+    required this.onUnlocked,
+    this.onOpenAdminPortal,
+  });
 
   @override
   ConsumerState<PinLockScreen> createState() => _PinLockScreenState();
@@ -73,9 +78,18 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen>
 
   Future<void> _verify() async {
     await Future.delayed(const Duration(milliseconds: 80));
+    if (!mounted) return;
+    // Exclude the Firebase owner's UID from staff PIN matching.
+    // Owner must use "Login as Owner" button — not the PIN keypad.
+    // This prevents the owner's StaffMember record (with limited permissions)
+    // from being used when owner enters their own PIN.
+    final ownerUid = FirebaseAuth.instance.currentUser?.uid;
     final staff = ref.read(staffProvider).cast<StaffMember?>()
         .firstWhere(
-          (s) => s?.pin == _pin && (s?.isActive ?? false),
+          (s) =>
+              s?.pin == _pin &&
+              (s?.isActive ?? false) &&
+              s?.id != ownerUid,   // ← exclude owner record
           orElse: () => null,
         );
 
@@ -96,33 +110,44 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen>
     });
   }
 
-  // ── Owner bypass (only if Firebase authed) ────────────────────────────────
+  // ── Owner bypass — requires PIN confirmation ─────────────────────────────
+  // Owner must enter their PIN to confirm identity before getting full access.
+  // This sets sessionUser = null (owner = unrestricted) — NOT a staff record.
   void _ownerBypass() {
+    if (!mounted) return;
+    final ownerUid = FirebaseAuth.instance.currentUser?.uid;
+    if (ownerUid == null) return;
+
+    // Find owner's staff record to get their PIN
+    final ownerRecord = ref.read(staffProvider)
+        .cast<StaffMember?>()
+        .firstWhere((s) => s?.id == ownerUid, orElse: () => null);
+
+    // If owner has a PIN set, verify the entered PIN matches
+    if (ownerRecord != null && ownerRecord.pin.isNotEmpty &&
+        ownerRecord.pin != '0000') {
+      // Check if current entered PIN matches owner's PIN
+      if (_pin != ownerRecord.pin) {
+        if (_pin.length == 4) {
+          _wrongPin('Incorrect owner PIN');
+        }
+        return;
+      }
+    }
+    // PIN matches (or owner hasn't changed default) → grant full owner access
     HapticFeedback.lightImpact();
-    ref.read(sessionUserProvider.notifier).state = null; // null = owner
+    // sessionUser = null means OWNER → StaffGuard gives unrestricted access
+    ref.read(sessionUserProvider.notifier).state = null;
     widget.onUnlocked(true);
   }
 
   // ── Hidden admin portal — long press logo ─────────────────────────────────
+  // Delegates to _AppGate via the onOpenAdminPortal callback.
+  // No Navigator.push — _AppGate owns all screen transitions.
   void _openAdminPortal() {
+    if (!mounted) return;
     HapticFeedback.heavyImpact();
-    Navigator.of(context, rootNavigator: true).push(
-      PageRouteBuilder(
-        pageBuilder: (ctx, anim, _) => CompanyLoginScreen(
-          onAuthenticated: ({required bool goDirectly}) {
-            Navigator.of(ctx, rootNavigator: true).pop();
-            if (goDirectly) {
-              ref.read(sessionUserProvider.notifier).state = null;
-              widget.onUnlocked(true);
-            }
-            // If not goDirectly, just return to this PIN screen (already here)
-          },
-        ),
-        transitionsBuilder: (ctx, anim, _, child) =>
-            FadeTransition(opacity: anim, child: child),
-        transitionDuration: const Duration(milliseconds: 300),
-      ),
-    );
+    widget.onOpenAdminPortal?.call();
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────

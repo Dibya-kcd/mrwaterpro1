@@ -28,6 +28,7 @@ class _DashState extends ConsumerState<DashboardScreen>
   @override
   void initState() {
     super.initState();
+    // Tab count depends on role — set in build() but init with 2 as default
     _tc = TabController(length: 2, vsync: this);
     _tc.addListener(() => setState(() {}));
   }
@@ -40,43 +41,60 @@ class _DashState extends ConsumerState<DashboardScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isDark  = Theme.of(context).brightness == Brightness.dark;
-    final primary = Theme.of(context).colorScheme.primary;
+    final isDark      = Theme.of(context).brightness == Brightness.dark;
+    final primary     = Theme.of(context).colorScheme.primary;
+    // null = owner (full access), non-null = staff (limited)
+    final sessionUser = ref.watch(sessionUserProvider);
+    final isOwner     = sessionUser == null;
+
+    // Staff only see the Dashboard tab — Analytics is owner-only
+    final tabCount = isOwner ? 2 : 1;
+
+    // Rebuild TabController if tab count changes (owner ↔ staff switch)
+    if (_tc.length != tabCount) {
+      _tc.dispose();
+      _tc = TabController(length: tabCount, vsync: this);
+      _tc.addListener(() => setState(() {}));
+    }
 
     return Column(children: [
-      // ── Tab bar — matches sidebar colour (card surface), not primary ──────
-      Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.cardDark : AppColors.card,
-          border: Border(
-            bottom: BorderSide(
-              color: isDark ? AppColors.separatorDark : AppColors.separator,
-              width: 1,
+      // Tab bar — hide if only one tab (staff view)
+      if (isOwner)
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardDark : AppColors.card,
+            border: Border(
+              bottom: BorderSide(
+                color: isDark ? AppColors.separatorDark : AppColors.separator,
+                width: 1,
+              ),
             ),
           ),
+          child: TabBar(
+            controller: _tc,
+            indicatorColor: primary,
+            indicatorWeight: 2.5,
+            dividerColor: Colors.transparent,
+            labelStyle: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700),
+            unselectedLabelStyle: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w500),
+            labelColor: primary,
+            unselectedLabelColor: AppColors.inkMuted,
+            tabs: const [
+              Tab(text: 'Dashboard'),
+              Tab(text: 'Analytics'),
+            ],
+          ),
         ),
-        child: TabBar(
-          controller: _tc,
-          indicatorColor: primary,
-          indicatorWeight: 2.5,
-          dividerColor: Colors.transparent,
-          labelStyle: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700),
-          unselectedLabelStyle: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w500),
-          labelColor: primary,
-          unselectedLabelColor: AppColors.inkMuted,
-          tabs: const [
-            Tab(text: 'Dashboard'),
-            Tab(text: 'Analytics'),
-          ],
-        ),
-      ),
 
       Expanded(
-        child: TabBarView(controller: _tc, children: [
-          _DashTab(isDark: isDark),
-          _AnalyticsTab(isDark: isDark),
-        ]),
+        child: isOwner
+            ? TabBarView(controller: _tc, children: [
+                _DashTab(isDark: isDark),
+                _AnalyticsTab(isDark: isDark),
+              ])
+            // Staff: show only Dashboard tab directly (no TabBarView overhead)
+            : _DashTab(isDark: isDark),
       ),
     ]);
   }
@@ -131,7 +149,7 @@ class _QuickActionsCard extends ConsumerWidget {
       _QuickAction(Icons.local_shipping_rounded,    'Create\nDelivery',    const Color(0xFF0096C7)),
       _QuickAction(Icons.group_add_rounded,         'Create\nCustomer',    const Color(0xFF7B61FF)),
       _QuickAction(Icons.payments_rounded,          'Create\nPayment',     const Color(0xFF06D6A0)),
-      _QuickAction(Icons.receipt_long_rounded,      'Create\nExpense',     const Color(0xFFFF8C42)),
+      _QuickAction(Icons.money_off_rounded,          'Create\nExpense',     const Color(0xFFFF8C42)),
       _QuickAction(Icons.document_scanner_rounded,  'Smart\nEntry',        AppColors.purple),
     ];
 
@@ -301,7 +319,7 @@ final _navItems2 = <_NavItem2>[
   _NavItem2(2, Icons.people_alt_rounded,     'Customers',   (d) => AppColors.coolColor(d)),
   _NavItem2(8, Icons.move_to_inbox_rounded,  'Load/Unload', (d) => AppColors.petColor(d)),
   _NavItem2(1, Icons.local_shipping_rounded, 'Deliveries',  (d) => AppColors.coolColor(d)),
-  _NavItem2(5, Icons.bar_chart_rounded,      'Reports',     (d) => AppColors.warningColor(d)),
+  _NavItem2(5, Icons.assessment_rounded,     'Reports',     (d) => AppColors.warningColor(d)),
   _NavItem2(4, Icons.payments_rounded,       'Payments',    (d) => AppColors.successColor(d)),
   _NavItem2(9,  Icons.money_off_rounded,          'Expenses',     (d) => AppColors.dangerColor(d)),
   _NavItem2(10, Icons.document_scanner_rounded,   'Smart Entry',  (d) => AppColors.purple),
@@ -800,8 +818,8 @@ class _PLBar extends StatelessWidget {
     final filled = (pct * 100).round().clamp(1, 100);
     final empty  = (100 - filled).clamp(0, 99);
     return Row(children: [
-      SizedBox(
-        width: 72,
+      Flexible(
+        flex: 2,
         child: Text(label, style: GoogleFonts.dmSans(
             fontSize: 13, fontWeight: FontWeight.w700, color: color),
             maxLines: 1, overflow: TextOverflow.ellipsis),

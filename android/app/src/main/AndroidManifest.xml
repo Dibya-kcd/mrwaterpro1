@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         PERMISSIONS
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <!-- Firebase RTDB + all network calls -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
+    <!-- speech_to_text — voice assistant feature -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+
+    <!-- image_picker — gallery (logo picker, smart entry OCR) -->
+    <!-- Android 13+ uses READ_MEDIA_IMAGES instead of READ_EXTERNAL_STORAGE -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <!-- Android 12 and below -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"/>
+
+    <!-- image_picker — camera (smart entry sheet scanner) -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+
+    <!-- share_plus — share PDF/CSV reports -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28"/>
+
+    <!-- Vibration for PIN lock feedback -->
+    <uses-permission android:name="android.permission.VIBRATE"/>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         FEATURES (declares what hardware this app uses — not blocking)
+         ══════════════════════════════════════════════════════════════════ -->
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <uses-feature android:name="android.hardware.microphone" android:required="false"/>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         APPLICATION
+         ══════════════════════════════════════════════════════════════════ -->
+    <application
+        android:label="MrWater"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:theme="@style/LaunchTheme"
+        android:enableOnBackInvokedCallback="true"
+        android:requestLegacyExternalStorage="true"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:hardwareAccelerated="true"
+        android:largeHeap="true">
+
+        <!-- ── Flutter metadata ──────────────────────────────────────────── -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2"/>
+
+        <!-- ── Main Activity ─────────────────────────────────────────────── -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize"
+            android:screenOrientation="portrait">
+
+            <!-- App entry point -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+
+            <!-- Deep link support — update scheme/host for your domain if needed -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="mrwater" android:host="app"/>
+            </intent-filter>
+        </activity>
+
+        <!-- ── FileProvider for share_plus and image_picker ──────────────── -->
+        <!-- Required to share files (PDFs, CSVs, photos) on Android 7+ -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"/>
+        </provider>
+
+        <!-- ── Google ML Kit metadata ─────────────────────────────────────── -->
+        <!-- Prevents auto-download of text recognition model (we use bundled) -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="ocr"/>
+
+    </application>
+</manifest>

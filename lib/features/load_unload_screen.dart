@@ -956,15 +956,19 @@ class _StatusPill extends StatelessWidget {
   final Color color;
   const _StatusPill({required this.label, required this.color});
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.10),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: color.withValues(alpha: 0.25)),
+  Widget build(BuildContext context) => ConstrainedBox(
+    constraints: const BoxConstraints(maxWidth: 160),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Text(label, style: GoogleFonts.inter(
+          fontSize: 10, fontWeight: FontWeight.w800, color: color),
+          maxLines: 1, overflow: TextOverflow.ellipsis),
     ),
-    child: Text(label, style: GoogleFonts.inter(
-        fontSize: 10, fontWeight: FontWeight.w800, color: color)),
   );
 }
 

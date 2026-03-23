@@ -198,7 +198,7 @@ class _StockCard extends StatelessWidget {
         Row(children: [
           Expanded(child: OutlinedButton.icon(
             onPressed: onLoss,
-            icon: const Icon(Icons.output_rounded, size: 16),
+            icon: const Icon(Icons.remove_circle_outline_rounded, size: 16),
             label: const Text('Stock OUT'),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.dangerColor(isDark),
@@ -208,7 +208,7 @@ class _StockCard extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(child: ElevatedButton.icon(
             onPressed: onAdd,
-            icon: const Icon(Icons.move_to_inbox_rounded, size: 16),
+            icon: const Icon(Icons.add_circle_outline_rounded, size: 16),
             label: const Text('Stock IN'),
             style: ElevatedButton.styleFrom(
               backgroundColor: color, foregroundColor: Colors.white,

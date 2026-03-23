@@ -196,6 +196,13 @@ class _TxnScreenState extends ConsumerState<TransactionsScreen> {
               : const SizedBox.shrink(),
         ),
 
+        // Summary strip — here it has access to custMap and _search
+        if (list.isNotEmpty) _SummaryStrip(
+          list: list,
+          custMap: custMap,
+          searchName: _search,
+        ),
+
         const SizedBox(height: 6),
 
         // ── List ──────────────────────────────────────────────────────────
@@ -315,7 +322,8 @@ class _HeaderPanel extends StatelessWidget {
     required this.onTogglePicker,
     required this.onFromPicked, required this.onToPicked,
     required this.onResetToday,
-    required this.fmtDate, required this.fmtFull, required this.list,
+    required this.fmtDate, required this.fmtFull,
+    required this.list,
   });
 
   @override
@@ -517,8 +525,6 @@ class _HeaderPanel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        // Summary strip
-        if (list.isNotEmpty) _SummaryStrip(list: list),
         const SizedBox(height: 4),
       ]),
     );
@@ -611,32 +617,60 @@ class _QuickPick extends StatelessWidget {
 }
 
 // ── Summary Strip ─────────────────────────────────────────────────────────────
+// ── Summary Strip ─────────────────────────────────────────────────────────────
 class _SummaryStrip extends StatelessWidget {
   final List<JarTransaction> list;
-  const _SummaryStrip({required this.list});
+  final Map<String, Customer> custMap;
+  final String searchName;
+
+  const _SummaryStrip({
+    required this.list,
+    required this.custMap,
+    required this.searchName,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primary = Theme.of(context).colorScheme.primary;
-    // billed = sum of billedAmount across all txns in range (excl. pure payments)
-    // collected = ALL amountCollected (deliveries + standalone payments)
-    // net = collected - billed: positive = advance (collected more), negative = due (owe more)
+    final isDark   = Theme.of(context).brightness == Brightness.dark;
+    final primary  = Theme.of(context).colorScheme.primary;
+    final successC = AppColors.successColor(isDark);
+    final dangerC  = AppColors.dangerColor(isDark);
+    final coolC    = AppColors.coolColor(isDark);
+    final petC     = AppColors.petColor(isDark);
+
     final billed    = list.fold(0.0, (s, t) => s + t.billedAmount);
     final collected = list.fold(0.0, (s, t) => s + t.amountCollected);
-    final net       = collected - billed; // positive = advance, negative = due
     final cd = list.fold(0, (s, t) => s + t.coolDelivered);
     final pd = list.fold(0, (s, t) => s + t.petDelivered);
     final cr = list.fold(0, (s, t) => s + t.coolReturned);
     final pr = list.fold(0, (s, t) => s + t.petReturned);
-    final coolC = AppColors.coolColor(isDark);
-    final petC  = AppColors.petColor(isDark);
-    final successC = AppColors.successColor(isDark);
-    final dangerC  = AppColors.dangerColor(isDark);
-    // Dynamic label: Due when owed, Advance when overpaid, clear when settled
-    final netLabel = net < 0 ? 'Dues' : net > 0 ? 'Advance' : 'Settled';
-    final netValue = net != 0 ? '₹${net.abs().toInt()}' : '—';
-    final netColor = net < 0 ? dangerC : net > 0 ? successC : AppColors.inkMuted;
+
+    // When a single customer is searched, show their TOTAL ledger balance
+    // instead of the period net — prevents misleading "Advance" label
+    // when customer still has overall dues
+    Customer? singleCust;
+    if (searchName.isNotEmpty) {
+      final q = searchName.toLowerCase();
+      final matches = custMap.values.where((c) =>
+          c.name.toLowerCase().contains(q) ||
+          c.phone.contains(q)).toList();
+      if (matches.length == 1) singleCust = matches.first;
+    }
+
+    final String thirdLabel;
+    final String thirdValue;
+    final Color  thirdColor;
+    if (singleCust != null) {
+      final bal = singleCust.ledgerBalance;
+      thirdLabel = bal < 0 ? 'Total Due' : bal > 0 ? 'Total Adv' : 'Settled';
+      thirdValue = bal != 0 ? '₹${bal.abs().toInt()}' : '—';
+      thirdColor = bal < 0 ? dangerC : bal > 0 ? successC : AppColors.inkMuted;
+    } else {
+      final net = collected - billed;
+      thirdLabel = net < 0 ? 'Net Due' : net > 0 ? 'Net Adv' : 'Settled';
+      thirdValue = net != 0 ? '₹${net.abs().toInt()}' : '—';
+      thirdColor = net < 0 ? dangerC : net > 0 ? successC : AppColors.inkMuted;
+    }
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -644,52 +678,54 @@ class _SummaryStrip extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? AppColors.surface2Dark : AppColors.surface2,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? AppColors.separatorDark : AppColors.separator),
+        border: Border.all(
+            color: isDark ? AppColors.separatorDark : AppColors.separator),
       ),
       child: Column(children: [
-        // Row 1: Billed | Collected | Due/Advance/Settled
         IntrinsicHeight(
           child: Row(children: [
             _SC('Billed',    '₹${billed.toInt()}',    primary,   isDark),
             _div(isDark),
             _SC('Collected', '₹${collected.toInt()}', successC,  isDark),
             _div(isDark),
-            _SC(netLabel, netValue, netColor, isDark),
+            _SC(thirdLabel,  thirdValue,              thirdColor, isDark),
           ]),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Divider(height: 1, color: isDark ? AppColors.separatorDark : AppColors.separator),
+          child: Divider(height: 1,
+              color: isDark ? AppColors.separatorDark : AppColors.separator),
         ),
-        // Row 2: jar counts — never overflows
         Row(children: [
-          // Cool
-          Expanded(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Expanded(child: Row(mainAxisAlignment: MainAxisAlignment.center,
+              children: [
             CoolJarIcon(size: 13, color: coolC),
             const SizedBox(width: 5),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('COOL', style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700,
-                  color: coolC, letterSpacing: 0.4)),
+              Text('COOL', style: GoogleFonts.inter(fontSize: 9,
+                  fontWeight: FontWeight.w700, color: coolC, letterSpacing: 0.4)),
               Text('↓$cd  ↑$cr', style: GoogleFonts.jetBrainsMono(
                   fontSize: 11, fontWeight: FontWeight.w700, color: coolC)),
             ]),
           ])),
-          Container(width: 1, height: 28, color: isDark ? AppColors.separatorDark : AppColors.separator),
-          // PET
-          Expanded(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Container(width: 1, height: 28,
+              color: isDark ? AppColors.separatorDark : AppColors.separator),
+          Expanded(child: Row(mainAxisAlignment: MainAxisAlignment.center,
+              children: [
             PetJarIcon(size: 13, color: petC),
             const SizedBox(width: 5),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('PET', style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700,
-                  color: petC, letterSpacing: 0.4)),
+              Text('PET', style: GoogleFonts.inter(fontSize: 9,
+                  fontWeight: FontWeight.w700, color: petC, letterSpacing: 0.4)),
               Text('↓$pd  ↑$pr', style: GoogleFonts.jetBrainsMono(
                   fontSize: 11, fontWeight: FontWeight.w700, color: petC)),
             ]),
           ])),
-          Container(width: 1, height: 28, color: isDark ? AppColors.separatorDark : AppColors.separator),
-          // Count
+          Container(width: 1, height: 28,
+              color: isDark ? AppColors.separatorDark : AppColors.separator),
           Expanded(child: Column(children: [
-            Text('TXN', style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700,
+            Text('TXN', style: GoogleFonts.inter(fontSize: 9,
+                fontWeight: FontWeight.w700,
                 color: AppColors.inkMuted, letterSpacing: 0.4)),
             Text('${list.length}', style: GoogleFonts.jetBrainsMono(
                 fontSize: 11, fontWeight: FontWeight.w700,
@@ -704,6 +740,7 @@ class _SummaryStrip extends StatelessWidget {
       width: 1, margin: const EdgeInsets.symmetric(horizontal: 6),
       color: dark ? AppColors.separatorDark : AppColors.separator);
 }
+
 
 class _SC extends StatelessWidget {
   final String label, value;
@@ -1309,22 +1346,25 @@ class _TxnFormState extends ConsumerState<TxnForm> {
           child: Column(children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(0, 12, 0, 0),
-              child: Row(children: [
-                const SizedBox(width: 70),
-                Expanded(child: _ColHeader(
-                  icon: Icons.arrow_downward_rounded,
-                  label: 'IN',
-                  sub: isEvent ? 'jars to event' : 'delivered to customer',
-                  color: Theme.of(context).colorScheme.primary,
-                )),
-                if (!isEvent)
+              child: LayoutBuilder(builder: (ctx, bc) {
+                final labelW = (bc.maxWidth * 0.22).clamp(56.0, 80.0);
+                return Row(children: [
+                  SizedBox(width: labelW),
                   Expanded(child: _ColHeader(
-                    icon: Icons.arrow_upward_rounded,
-                    label: 'OUT',
-                    sub: 'collected from customer',
-                    color: AppColors.successColor(isDark),
+                    icon: Icons.arrow_downward_rounded,
+                    label: 'IN',
+                    sub: isEvent ? 'jars to event' : 'delivered to customer',
+                    color: Theme.of(context).colorScheme.primary,
                   )),
-              ]),
+                  if (!isEvent)
+                    Expanded(child: _ColHeader(
+                      icon: Icons.arrow_upward_rounded,
+                      label: 'OUT',
+                      sub: 'collected from customer',
+                      color: AppColors.successColor(isDark),
+                    )),
+                ]);
+              }),
             ),
             Divider(height: 1, color: isDark ? AppColors.separatorDark : AppColors.separator),
             _JarInputRow(
@@ -1702,13 +1742,16 @@ class _DeliveryFormState extends ConsumerState<DeliveryForm> {
           border: Border.all(color: isDark ? AppColors.separatorDark : AppColors.separator),
         ),
         child: Column(children: [
-          Padding(padding: const EdgeInsets.fromLTRB(0, 12, 0, 0), child: Row(children: [
-            const SizedBox(width: 70),
-            Expanded(child: _ColHeader(icon: Icons.arrow_downward_rounded, label: 'IN',
-                sub: 'delivered to customer', color: primary)),
-            Expanded(child: _ColHeader(icon: Icons.arrow_upward_rounded, label: 'OUT',
-                sub: 'collected from customer', color: AppColors.successColor(isDark))),
-          ])),
+          Padding(padding: const EdgeInsets.fromLTRB(0, 12, 0, 0), child: LayoutBuilder(builder: (ctx, bc) {
+            final labelW = (bc.maxWidth * 0.22).clamp(56.0, 80.0);
+            return Row(children: [
+              SizedBox(width: labelW),
+              Expanded(child: _ColHeader(icon: Icons.arrow_downward_rounded, label: 'IN',
+                  sub: 'delivered to customer', color: primary)),
+              Expanded(child: _ColHeader(icon: Icons.arrow_upward_rounded, label: 'OUT',
+                  sub: 'collected from customer', color: AppColors.successColor(isDark))),
+            ]);
+          })),
           Divider(height: 1, color: isDark ? AppColors.separatorDark : AppColors.separator),
           _JarInputRow(jarIcon: CoolJarIcon(size: 22, color: coolC), label: 'Cool', color: coolC,
             stockInfo: 'Stock: ${inv.coolStock}',
@@ -1963,11 +2006,14 @@ class _EventFormState extends ConsumerState<EventForm> {
           border: Border.all(color: isDark ? AppColors.separatorDark : AppColors.separator),
         ),
         child: Column(children: [
-          Padding(padding: const EdgeInsets.fromLTRB(0, 12, 0, 0), child: Row(children: [
-            const SizedBox(width: 70),
-            Expanded(child: _ColHeader(icon: Icons.arrow_downward_rounded, label: 'IN',
-                sub: 'jars to event', color: AppColors.purple)),
-          ])),
+          Padding(padding: const EdgeInsets.fromLTRB(0, 12, 0, 0), child: LayoutBuilder(builder: (ctx, bc) {
+            final labelW = (bc.maxWidth * 0.22).clamp(56.0, 80.0);
+            return Row(children: [
+              SizedBox(width: labelW),
+              Expanded(child: _ColHeader(icon: Icons.arrow_downward_rounded, label: 'IN',
+                  sub: 'jars to event', color: AppColors.purple)),
+            ]);
+          })),
           Divider(height: 1, color: isDark ? AppColors.separatorDark : AppColors.separator),
           _JarInputRow(jarIcon: CoolJarIcon(size: 22, color: coolC), label: 'Cool', color: coolC,
             stockInfo: 'Stock: ${inv.coolStock}',
@@ -2861,34 +2907,69 @@ class _JarInputRow extends StatelessWidget {
       this.showReturn = true});
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-    child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-      SizedBox(width: 70, child: Column(children: [
-        jarIcon,
-        const SizedBox(height: 3),
-        Text(label, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
-        Text(stockInfo, style: GoogleFonts.inter(fontSize: 10, color: AppColors.inkMuted)),
-        Text(priceInfo, style: GoogleFonts.inter(fontSize: 10,
-            color: priceInfo.contains('★') ? AppColors.warningColor(false) : AppColors.inkMuted,
-            fontWeight: priceInfo.contains('★') ? FontWeight.w700 : FontWeight.w400)),
-      ])),
-      Expanded(child: Column(children: [
-        _EditableStepper(value: delivered, max: maxDeliver, onChanged: onDeliverChanged,
-            color: color),
-        if (delivered > 0)
-          Text('₹${(delivered * unitPrice).toInt()} billed',
-              style: GoogleFonts.jetBrainsMono(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
-      ])),
-      if (showReturn)
-        Expanded(child: Column(children: [
-          _EditableStepper(value: returned, max: maxReturn, onChanged: onReturnChanged,
-              color: AppColors.success),
-          if (returned > 0)
-            Text('$returned back', style: GoogleFonts.inter(fontSize: 10, color: AppColors.inkMuted)),
-        ])),
-    ]),
-  );
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      // Responsive breakpoints: shrink label column on very narrow screens
+      final totalWidth = constraints.maxWidth;
+      final labelWidth = (totalWidth * 0.22).clamp(56.0, 80.0);
+
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          // ── Jar label column ─────────────────────────────────
+          SizedBox(width: labelWidth, child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              jarIcon,
+              const SizedBox(height: 3),
+              Text(label,
+                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: color),
+                  overflow: TextOverflow.ellipsis),
+              Text(stockInfo,
+                  style: GoogleFonts.inter(fontSize: 10, color: AppColors.inkMuted),
+                  overflow: TextOverflow.ellipsis),
+              Text(priceInfo,
+                  style: GoogleFonts.inter(fontSize: 10,
+                      color: priceInfo.contains('★') ? AppColors.warningColor(false) : AppColors.inkMuted,
+                      fontWeight: priceInfo.contains('★') ? FontWeight.w700 : FontWeight.w400),
+                  overflow: TextOverflow.ellipsis),
+            ],
+          )),
+          // ── IN stepper ───────────────────────────────────────
+          Expanded(child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _EditableStepper(value: delivered, max: maxDeliver, onChanged: onDeliverChanged,
+                  color: color),
+              if (delivered > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text('₹${(delivered * unitPrice).toInt()} billed',
+                      style: GoogleFonts.jetBrainsMono(fontSize: 9, color: color, fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis),
+                ),
+            ],
+          )),
+          // ── OUT stepper ──────────────────────────────────────
+          if (showReturn)
+            Expanded(child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _EditableStepper(value: returned, max: maxReturn, onChanged: onReturnChanged,
+                    color: AppColors.success),
+                if (returned > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text('$returned back',
+                        style: GoogleFonts.inter(fontSize: 9, color: AppColors.inkMuted),
+                        overflow: TextOverflow.ellipsis),
+                  ),
+              ],
+            )),
+        ]),
+      );
+    });
+  }
 }
 
 // ── Editable stepper — tap number to type directly, or use +/- buttons ────────
@@ -2937,67 +3018,82 @@ class _EditableStepperState extends State<_EditableStepper> {
   @override
   Widget build(BuildContext context) {
     final c = widget.color;
-    return Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-      // ── minus ──
-      _StepBtn(
-        icon: Icons.remove_rounded,
-        color: c,
-        enabled: widget.value > 0,
-        onTap: () { _editing = false; widget.onChanged((widget.value - 1).clamp(0, widget.max)); },
-      ),
-      const SizedBox(width: 6),
-      // ── tappable number / inline text field ──
-      GestureDetector(
-        onTap: () {
-          setState(() { _editing = true; _ctrl.text = '${widget.value}'; });
-          Future.microtask(() {
-            _focus.requestFocus();
-            _ctrl.selection = TextSelection(
-                baseOffset: 0, extentOffset: _ctrl.text.length);
-          });
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          width: 52, height: 40,
-          decoration: BoxDecoration(
-            color: _editing ? c.withValues(alpha: 0.10) : c.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: _editing ? c : c.withValues(alpha: 0.25),
-              width: _editing ? 1.5 : 1,
+    // LayoutBuilder lets the stepper measure its actual available width
+    // and scale every dimension proportionally — no fixed pixel overflows.
+    return LayoutBuilder(builder: (context, constraints) {
+      final w = constraints.maxWidth;
+      final btnSize  = (w * 0.24).clamp(24.0, 34.0);
+      final gap      = (w * 0.03).clamp(2.0,  6.0);
+      final dispW    = (w - btnSize * 2 - gap * 2).clamp(28.0, 56.0);
+      final dispH    = btnSize.clamp(28.0, 40.0);
+      final fs       = (dispW * 0.34).clamp(12.0, 18.0);
+      final iconSize = (btnSize * 0.50).clamp(10.0, 16.0);
+
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── minus ──
+          _StepBtn(
+            icon: Icons.remove_rounded, color: c,
+            size: btnSize, iconSize: iconSize,
+            enabled: widget.value > 0,
+            onTap: () { _editing = false; widget.onChanged((widget.value - 1).clamp(0, widget.max)); },
+          ),
+          SizedBox(width: gap),
+          // ── tappable number / inline text field ──
+          GestureDetector(
+            onTap: () {
+              setState(() { _editing = true; _ctrl.text = '${widget.value}'; });
+              Future.microtask(() {
+                _focus.requestFocus();
+                _ctrl.selection = TextSelection(baseOffset: 0, extentOffset: _ctrl.text.length);
+              });
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: dispW, height: dispH,
+              decoration: BoxDecoration(
+                color: _editing ? c.withValues(alpha: 0.10) : c.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: _editing ? c : c.withValues(alpha: 0.25),
+                  width: _editing ? 1.5 : 1,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: _editing
+                  ? TextField(
+                      controller: _ctrl,
+                      focusNode: _focus,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.jetBrainsMono(
+                          fontSize: fs, fontWeight: FontWeight.w800, color: c),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        filled: false,
+                        contentPadding: EdgeInsets.zero,
+                        isDense: true,
+                      ),
+                      onSubmitted: (_) => _commit(),
+                    )
+                  : Text('${widget.value}',
+                      style: GoogleFonts.jetBrainsMono(
+                          fontSize: fs, fontWeight: FontWeight.w800, color: c)),
             ),
           ),
-          alignment: Alignment.center,
-          child: _editing
-              ? TextField(
-                  controller: _ctrl,
-                  focusNode: _focus,
-                  keyboardType: TextInputType.number,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.jetBrainsMono(
-                      fontSize: 18, fontWeight: FontWeight.w800, color: c),
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    filled: false,
-                    contentPadding: EdgeInsets.zero,
-                    isDense: true,
-                  ),
-                  onSubmitted: (_) => _commit(),
-                )
-              : Text('${widget.value}',
-                  style: GoogleFonts.jetBrainsMono(
-                      fontSize: 18, fontWeight: FontWeight.w800, color: c)),
-        ),
-      ),
-      const SizedBox(width: 6),
-      // ── plus ──
-      _StepBtn(
-        icon: Icons.add_rounded,
-        color: c,
-        enabled: widget.value < widget.max,
-        onTap: () { _editing = false; widget.onChanged((widget.value + 1).clamp(0, widget.max)); },
-      ),
-    ]);
+          SizedBox(width: gap),
+          // ── plus ──
+          _StepBtn(
+            icon: Icons.add_rounded, color: c,
+            size: btnSize, iconSize: iconSize,
+            enabled: widget.value < widget.max,
+            onTap: () { _editing = false; widget.onChanged((widget.value + 1).clamp(0, widget.max)); },
+          ),
+        ],
+      );
+    });
   }
 }
 
@@ -3006,20 +3102,24 @@ class _StepBtn extends StatelessWidget {
   final Color color;
   final bool enabled;
   final VoidCallback onTap;
+  // Responsive sizing passed in from parent LayoutBuilder
+  final double size;
+  final double iconSize;
   const _StepBtn({required this.icon, required this.color,
-      required this.enabled, required this.onTap});
+      required this.enabled, required this.onTap,
+      this.size = 34, this.iconSize = 16});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: enabled ? onTap : null,
     child: Container(
-      width: 34, height: 34,
+      width: size, height: size,
       decoration: BoxDecoration(
         color: enabled ? color.withValues(alpha: 0.12) : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(size * 0.24),
         border: Border.all(color: color.withValues(alpha: enabled ? 0.30 : 0.12)),
       ),
-      child: Icon(icon, size: 16, color: enabled ? color : AppColors.inkMuted),
+      child: Icon(icon, size: iconSize, color: enabled ? color : AppColors.inkMuted),
     ),
   );
 }

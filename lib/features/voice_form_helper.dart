@@ -874,11 +874,13 @@ class _InlineSuggCards extends StatelessWidget {
                   children: [
                 Text(c.name, style: GoogleFonts.inter(fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : Colors.black87)),
+                    color: isDark ? Colors.white : Colors.black87),
+                    overflow: TextOverflow.ellipsis, maxLines: 1),
                 Text(bal, style: GoogleFonts.inter(fontSize: 11,
                     color: c.hasDues ? AppColors.dangerColor(isDark)
                         : c.hasCredit ? AppColors.successColor(isDark)
-                        : AppColors.inkMuted)),
+                        : AppColors.inkMuted),
+                    overflow: TextOverflow.ellipsis, maxLines: 1),
               ])),
               Text('${(r.score*100).toInt()}%',
                   style: GoogleFonts.inter(fontSize: 11,

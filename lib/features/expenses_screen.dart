@@ -564,6 +564,7 @@ class _ExpenseRow extends StatelessWidget {
                     : txn.customerName,
                 style: GoogleFonts.inter(
                     fontSize: 13, fontWeight: FontWeight.w700),
+                maxLines: 1, overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 2),
               Text(

@@ -40,46 +40,96 @@ class FirebaseService {
 
   String get _companyId => CompanySession.companyId;
 
-  DatabaseReference _ref(String node) {
-    if (_companyId.isEmpty) {
-      throw StateError('FirebaseService: Attempted access before CompanySession.init()');
-    }
+  /// Returns null if CompanySession not yet initialised.
+  /// Callers must handle null gracefully.
+  DatabaseReference? _ref(String node) {
+    if (_companyId.isEmpty) return null;   // not yet initialised — safe return
     return _db.ref('companies/$_companyId/$node');
   }
 
   // ── Generic helpers ───────────────────────────────────────────────────────
 
-  /// Read a node once and return its value as a Map, or null if missing.
+  /// Read a node once and return its value as a Map, or null if missing/uninit.
   Future<Map<String, dynamic>?> readOnce(String node) async {
-    final snap = await _ref(node).get();
+    final ref = _ref(node);
+    if (ref == null) return null;          // CompanySession not ready yet
+    final snap = await ref.get();
     if (!snap.exists || snap.value == null) return null;
-    // _deepCast handles Flutter Web LinkedMap<Object?, Object?> recursively.
     return _deepCast(snap.value);
   }
 
   /// Stream every change to a node as a Map.
-  Stream<Map<String, dynamic>?> watch(String node) =>
-      _ref(node).onValue.map((event) {
+  ///
+  /// If CompanySession is not yet initialised, this method retries every 200ms
+  /// until it is, then subscribes to Firebase.  This means ALL providers that
+  /// call watch() in their constructors will automatically get live data once
+  /// CompanySession.init() is called — no manual reinit() needed.
+  Stream<Map<String, dynamic>?> watch(String node) {
+    // If already ready, subscribe immediately
+    final ref = _ref(node);
+    if (ref != null) {
+      return ref.onValue.map((event) {
         if (!event.snapshot.exists || event.snapshot.value == null) return null;
-        // _deepCast handles Flutter Web LinkedMap<Object?, Object?> recursively.
         return _deepCast(event.snapshot.value);
       });
+    }
 
-  /// Write (set) a whole node.
-  Future<void> write(String node, Map<String, dynamic> data) =>
-      _ref(node).set(data);
+    // Not ready yet — use StreamController that waits for CompanySession
+    final controller = StreamController<Map<String, dynamic>?>.broadcast();
+    _waitAndSubscribe(node, controller);
+    return controller.stream;
+  }
 
-  /// Merge-update fields inside a node (PATCH semantics).
-  Future<void> update(String node, Map<String, dynamic> data) =>
-      _ref(node).update(data);
+  /// Polls every 200ms until CompanySession is ready, then subscribes.
+  void _waitAndSubscribe(String node,
+      StreamController<Map<String, dynamic>?> controller) {
+    Timer.periodic(const Duration(milliseconds: 200), (timer) {
+      final ref = _ref(node);
+      if (ref == null) return; // still not ready, keep polling
+      timer.cancel();
+      if (controller.isClosed) return;
+      ref.onValue.listen(
+        (event) {
+          if (controller.isClosed) return;
+          if (!event.snapshot.exists || event.snapshot.value == null) {
+            controller.add(null);
+          } else {
+            controller.add(_deepCast(event.snapshot.value));
+          }
+        },
+        onError: (e) { if (!controller.isClosed) controller.addError(e); },
+        onDone:  ()  { if (!controller.isClosed) controller.close(); },
+      );
+    });
+  }
 
-  /// Write a single child key inside a node.
-  Future<void> setChild(String node, String childId, Map<String, dynamic> data) =>
-      _ref(node).child(childId).set(data);
+  /// Write (set) a whole node. No-op if not initialised.
+  Future<void> write(String node, Map<String, dynamic> data) async {
+    final ref = _ref(node);
+    if (ref == null) return;
+    await ref.set(data);
+  }
 
-  /// Remove a single child.
-  Future<void> removeChild(String node, String childId) =>
-      _ref(node).child(childId).remove();
+  /// Merge-update fields inside a node (PATCH semantics). No-op if not init.
+  Future<void> update(String node, Map<String, dynamic> data) async {
+    final ref = _ref(node);
+    if (ref == null) return;
+    await ref.update(data);
+  }
+
+  /// Write a single child key inside a node. No-op if not initialised.
+  Future<void> setChild(String node, String childId, Map<String, dynamic> data) async {
+    final ref = _ref(node);
+    if (ref == null) return;
+    await ref.child(childId).set(data);
+  }
+
+  /// Remove a single child. No-op if not initialised.
+  Future<void> removeChild(String node, String childId) async {
+    final ref = _ref(node);
+    if (ref == null) return;
+    await ref.child(childId).remove();
+  }
 
   // ── Settings ──────────────────────────────────────────────────────────────
   Future<Map<String, dynamic>?> readSettings() =>

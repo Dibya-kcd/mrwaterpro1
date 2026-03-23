@@ -1,8 +1,9 @@
 // ════════════════════════════════════════════════════════════════════════════
-// main.dart  — App entry point with Firebase initialization
-// All Firebase config values come from FirebaseConfig — never hardcoded here.
+// main.dart
 // ════════════════════════════════════════════════════════════════════════════
 
+import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
@@ -11,84 +12,73 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/providers/app_state.dart';
 import 'core/services/firebase_config.dart';
 import 'core/theme/app_theme.dart';
+import 'features/company_login_screen.dart';
 import 'features/main_scaffold.dart';
 import 'features/pin_lock_screen.dart';
 import 'features/splash_screen.dart';
-import 'features/company_login_screen.dart';
-
-// Firebase Web SDK config for reference (already integrated into FirebaseConfig)
-/*
-// Your web app's Firebase configuration 
-const firebaseConfig = { 
-  apiKey: "AIzaSyDr6JHIReYMAT-gff_OZZtU2aaAj0zt2ho", 
-  authDomain: "mrwaterprov1-54c3f.firebaseapp.com", 
-  databaseURL: "https://mrwaterprov1-54c3f-default-rtdb.firebaseio.com", 
-  projectId: "mrwaterprov1-54c3f", 
-  storageBucket: "mrwaterprov1-54c3f.firebasestorage.app", 
-  messagingSenderId: "199429585160", 
-  appId: "1:199429585160:web:919155f8d921ab0790d4bd" 
-}; 
-*/
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialise Firebase using our config constants from FirebaseConfig.
   try {
     await Firebase.initializeApp(options: FirebaseConfig.currentPlatform);
-    debugPrint('Firebase connected successfully: ${FirebaseConfig.projectId}');
-    
-    // Test connectivity to RTDB
     final db = FirebaseDatabase.instanceFor(
-      app: Firebase.app(),
-      databaseURL: FirebaseConfig.databaseUrl,
-    );
+        app: Firebase.app(), databaseURL: FirebaseConfig.databaseUrl);
     final snap = await db.ref('.info/connected').get();
-    debugPrint('RTDB Connection Status: ${snap.value}');
+    debugPrint('Firebase: ${FirebaseConfig.projectId} connected=${snap.value}');
   } catch (e) {
-    debugPrint('Firebase connection error: $e');
+    debugPrint('Firebase init error: $e');
+  }
+
+  // Pre-init CompanySession if user already signed in (sync check after init)
+  final currentUser = FirebaseAuth.instance.currentUser;
+  if (currentUser != null) {
+    CompanySession.init(currentUser.uid,
+        name: currentUser.displayName ?? currentUser.email ?? '');
+    debugPrint('CompanySession pre-init: ${currentUser.email}');
   }
 
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
   ));
-
   runApp(const ProviderScope(child: MrWaterApp()));
 }
 
 class MrWaterApp extends ConsumerWidget {
   const MrWaterApp({super.key});
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings  = ref.watch(settingsProvider);
     final themeMode = ref.watch(themeModeProvider);
-
     return MaterialApp(
       title: settings.appName,
       debugShowCheckedModeBanner: false,
       theme:     AppTheme.light(settings.accentColor),
       darkTheme: AppTheme.dark(settings.accentColor),
       themeMode: themeMode,
-      home: const _AuthGate(),
+      home: const _AppGate(),
     );
   }
 }
 
-// ── Auth Gate ────────────────────────────────────────────────────────────────
-// App always starts on SplashScreen → _AppGate (PIN).
-// The hidden admin portal is reached by long-pressing the logo on the PIN screen.
-// This gate just handles the startup flow.
-class _AuthGate extends StatelessWidget {
-  const _AuthGate();
-  @override
-  Widget build(BuildContext context) =>
-      SplashScreen(nextScreen: const _AppGate());
-}
+// ══════════════════════════════════════════════════════════════════════════════
+// APP GATE
+//
+// Clean state machine — _screen drives what build() returns.
+// NO Navigator.push anywhere. No bridge widgets. No race conditions.
+//
+// STARTUP SEQUENCE:
+//   1. Show SplashScreen (as a direct widget, not a pushed route)
+//   2. In initState: run splash timer + wait for Firebase auth in parallel
+//   3. When BOTH complete → decide: app (if authed) or PIN (if not)
+//
+// KEY INSIGHT: SplashScreen is shown as widget content, not as a route.
+// _AppGate.build() returns SplashScreen directly. When we're done with
+// splash, we just setState(_screen = ...) — no Navigator involved at all.
+// ══════════════════════════════════════════════════════════════════════════════
+enum _Screen { splash, pin, adminPortal, app }
 
-// ── App Gate — PIN lock within a company ──────────────────────────────────────
-// Layer 3: staff PIN or owner bypass. Runs AFTER company auth.
 class _AppGate extends ConsumerStatefulWidget {
   const _AppGate();
   @override
@@ -96,80 +86,174 @@ class _AppGate extends ConsumerStatefulWidget {
 }
 
 class _AppGateState extends ConsumerState<_AppGate> {
+  _Screen _screen = _Screen.splash;
+
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Precache the logo to ensure immediate loading throughout the app
-    precacheImage(const AssetImage('assets/images/mrwater_logo.png'), context);
+  void initState() {
+    super.initState();
+    _startupSequence();
   }
 
   @override
-  Widget build(BuildContext context) {
-    final authState = ref.watch(authStateProvider);
-    final pinUnlocked = ref.watch(pinUnlockedProvider);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Precache the default logo asset (fallback when no custom logo is configured)
+    precacheImage(
+        const AssetImage('assets/images/mrwater_logo.png'), context);
+  }
 
-    // Reset PIN unlock if Firebase user changes (sign out or switch)
-    ref.listen(authStateProvider, (prev, next) {
-      if (prev?.value != next.value) {
-        ref.read(pinUnlockedProvider.notifier).state = false;
-        ref.read(sessionUserProvider.notifier).state = null;
+  // Completer that resolves when the splash video finishes
+  final Completer<void> _splashCompleter = Completer<void>();
+
+  // ── Called by SplashScreen when video ends ────────────────────────────────
+  void _onSplashVideoEnded() {
+    if (!_splashCompleter.isCompleted) _splashCompleter.complete();
+  }
+
+  // ── Startup: wait for video AND Firebase auth in parallel ─────────────────
+  Future<void> _startupSequence() async {
+    // Wait for Firebase Auth to emit its first event.
+    // On web, currentUser is null synchronously right after initializeApp()
+    // because the persisted session is restored from IndexedDB asynchronously.
+    // We MUST await authStateChanges().first — never use currentUser directly.
+    final authFuture = FirebaseAuth.instance
+        .authStateChanges()
+        .first
+        .timeout(const Duration(seconds: 8), onTimeout: () => null)
+        .catchError((_) => null);
+
+    // Wait for the splash video to finish (video fires _onSplashVideoEnded)
+    // Also enforce a minimum splash time as safety
+    final minSplash = Future.delayed(const Duration(seconds: 3));
+
+    // Wait for BOTH: auth resolved AND splash finished
+    final results = await Future.wait([
+      authFuture,
+      Future.any([_splashCompleter.future, Future.delayed(const Duration(seconds: 6))]),
+      minSplash,
+    ]);
+
+    if (!mounted) return;
+
+    final user = results[0] as User?;
+    debugPrint('Startup complete — user: ${user?.email ?? "none"}');
+
+    if (user != null) {
+      _initOwnerSession(user);
+      _goto(_Screen.app);
+    } else {
+      _goto(_Screen.pin);
+    }
+  }
+
+  // ── Safe setState ─────────────────────────────────────────────────────────
+  void _goto(_Screen s) {
+    if (!mounted) return;
+    setState(() => _screen = s);
+  }
+
+  // ── PIN screen unlocked ───────────────────────────────────────────────────
+  void _onPinUnlocked(bool isOwner) {
+    if (!mounted) return;
+    if (isOwner) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) _initOwnerSession(user);
+      ref.read(sessionUserProvider.notifier).state = null;
+    }
+    ref.read(pinUnlockedProvider.notifier).state = true;
+    _goto(_Screen.app);
+  }
+
+  // ── Long-press logo → open hidden admin portal ────────────────────────────
+  void _onOpenAdminPortal() => _goto(_Screen.adminPortal);
+
+  // ── Admin portal authentication complete ─────────────────────────────────
+  void _onAdminAuthenticated({required bool goDirectly}) {
+    if (!mounted) return;
+    if (goDirectly) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) _initOwnerSession(user);
+      ref.read(sessionUserProvider.notifier).state = null;
+      ref.read(pinUnlockedProvider.notifier).state = true;
+      _goto(_Screen.app);
+    } else {
+      _goto(_Screen.pin);
+    }
+  }
+
+  // ── Init owner session + auto-add staff ───────────────────────────────────
+  void _initOwnerSession(User user) {
+    if (!CompanySession.isLoggedIn) {
+      CompanySession.init(user.uid,
+          name: user.displayName ?? user.email ?? '');
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final active =
+          ref.read(staffProvider).where((s) => s.isActive).toList();
+      if (active.isEmpty) {
+        ref.read(staffProvider.notifier).add(StaffMember(
+          id:          user.uid,
+          name:        user.displayName ?? 'Owner',
+          phone:       user.phoneNumber ?? '',
+          pin:         '0000',
+          isActive:    true,
+          // Owner gets ALL permissions — same as sessionUser=null (unrestricted)
+          permissions: [
+            'dashboard', 'transactions', 'customers', 'inventory',
+            'load_unload', 'payments', 'reports', 'notifications',
+            'settings', 'expenses', 'smart_entry',
+          ],
+        ));
       }
     });
+  }
 
-    return authState.when(
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
-      error: (err, stack) => Scaffold(
-        body: Center(child: Text('Auth Error: $err')),
-      ),
-      data: (user) {
-        // 1. If no owner is logged in via Firebase Auth, show the Admin Portal (Login)
-        if (user == null) {
-          return CompanyLoginScreen(
-            onAuthenticated: ({required bool goDirectly}) {
-              // Firebase Auth will update automatically and rebuild this widget
-              if (goDirectly) {
-                ref.read(pinUnlockedProvider.notifier).state = true;
-              }
-            },
-          );
-        }
+  // ── Build ─────────────────────────────────────────────────────────────────
+  @override
+  Widget build(BuildContext context) {
+    // Watch pinUnlockedProvider — main_scaffold sets this to false on logout.
+    // When it becomes false while we're showing the app, switch to PIN screen.
+    final pinUnlocked = ref.watch(pinUnlockedProvider);
+    if (!pinUnlocked && _screen == _Screen.app) {
+      // Use postFrameCallback to avoid setState during build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _goto(_Screen.pin);
+      });
+    }
 
-        // 2. Owner is logged in. Ensure session is initialized.
-        if (!CompanySession.isLoggedIn) {
-          CompanySession.init(user.uid, name: user.displayName ?? user.email);
-        }
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 400),
+      child: switch (_screen) {
 
-        // Check for staff. Ensure owner is added as an admin staff member if not already present.
-        final staff = ref.watch(staffProvider);
-        final activeStaff = staff.where((s) => s.isActive).toList();
+        // Splash — shown as a direct widget, not a pushed route.
+        // onComplete fires when the video finishes → _onSplashVideoEnded.
+        // _startupSequence runs in parallel waiting for Firebase auth.
+        // The screen only transitions once BOTH are done.
+        _Screen.splash => SplashScreen(
+            key: const ValueKey('splash'),
+            nextScreen: const SizedBox.shrink(), // unused when onComplete set
+            onComplete: _onSplashVideoEnded,
+          ),
 
-        if (activeStaff.isEmpty && user.uid.isNotEmpty) {
-          // No staff yet? Add the owner as the first admin staff automatically.
-          final ownerStaff = StaffMember(
-            id: user.uid,
-            name: user.displayName ?? 'Owner',
-            phone: user.phoneNumber ?? '',
-            pin: '0000', // Default PIN for new owner
-            isActive: true,
-            permissions: ['dashboard','transactions','customers','inventory','load_unload','payments','reports','notifications','settings'],
-          );
-          // We can't use await here in build, but we can trigger it.
-          Future.microtask(() => ref.read(staffProvider.notifier).add(ownerStaff));
-        }
+        // PIN screen
+        _Screen.pin => PinLockScreen(
+            key: const ValueKey('pin'),
+            onUnlocked:        _onPinUnlocked,
+            onOpenAdminPortal: _onOpenAdminPortal,
+          ),
 
-        // 3. If we've already passed the PIN lock (or owner bypass), show the app.
-        if (pinUnlocked) {
-          return const MainScaffold();
-        }
+        // Hidden admin portal
+        _Screen.adminPortal => CompanyLoginScreen(
+            key: const ValueKey('admin'),
+            onAuthenticated: _onAdminAuthenticated,
+            onBack: () => _goto(_Screen.pin),
+          ),
 
-        // 4. Show the PIN lock screen.
-        return PinLockScreen(
-          onUnlocked: (isOwner) {
-            ref.read(pinUnlockedProvider.notifier).state = true;
-          },
-        );
+        // Main app
+        _Screen.app => const MainScaffold(
+            key: ValueKey('app'),
+          ),
       },
     );
   }

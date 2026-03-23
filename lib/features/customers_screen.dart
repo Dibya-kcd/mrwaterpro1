@@ -296,7 +296,13 @@ class CustDetail extends ConsumerWidget {
               ]),
             ])),
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text('₹${t.billedAmount.toInt()}', style: GoogleFonts.jetBrainsMono(fontSize: 13, fontWeight: FontWeight.w700)),
+              // For pure payments show amountCollected, for deliveries show billedAmount
+              Text(
+                t.billedAmount == 0 && t.amountCollected > 0
+                    ? '₹${t.amountCollected.toInt()}'
+                    : '₹${t.billedAmount.toInt()}',
+                style: GoogleFonts.jetBrainsMono(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
               Text(t.paymentMode, style: GoogleFonts.inter(fontSize: 11, color: AppColors.inkMuted)),
             ]),
           ]),
@@ -360,8 +366,9 @@ class _JarStatusTile extends StatelessWidget {
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         icon, const SizedBox(width: 6),
-        Text(label, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600,
-            color: count > 0 ? color : AppColors.inkMuted)),
+        Expanded(child: Text(label, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600,
+            color: count > 0 ? color : AppColors.inkMuted),
+            overflow: TextOverflow.ellipsis)),
       ]),
       const SizedBox(height: 6),
       Text('$count with customer', style: GoogleFonts.jetBrainsMono(fontSize: 13,
@@ -1102,7 +1109,7 @@ class _PriceOverrideRow extends StatelessWidget {
           style: GoogleFonts.inter(fontSize: 11, color: enabled ? color : AppColors.inkMuted)),
     ])),
     if (enabled)
-      SizedBox(width: 90, child: TextFormField(
+      SizedBox(width: 80, child: TextFormField(
         controller: ctrl,
         keyboardType: TextInputType.number,
         textAlign: TextAlign.center,
@@ -1166,7 +1173,7 @@ class _CustomerQuickSheet extends ConsumerWidget {
       ),
       const SizedBox(height: 10),
       _QBtn(
-        icon: Icons.undo_rounded,
+        icon: Icons.swap_horiz_rounded,
         label: 'Return Jars',
         sublabel: 'Collect jars back from customer',
         color: AppColors.inkMuted, isDark: isDark,

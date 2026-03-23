@@ -1,0 +1,42 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# .gitignore — MrWater Pro
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Secrets (your existing entries — kept exactly) ────────────────────────────
+dart_defines.env
+lib/core/services/firebase_config.dart
+google-services.json
+
+# ── Additional secrets ────────────────────────────────────────────────────────
+android/app/google-services.json
+android/key.properties
+*.jks
+*.keystore
+
+# ── Flutter / Dart ────────────────────────────────────────────────────────────
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+build/
+*.dart_snapshots
+
+# ── Android ───────────────────────────────────────────────────────────────────
+android/.gradle/
+android/app/.cxx/
+android/local.properties
+*.apk
+*.aab
+
+# ── iOS ───────────────────────────────────────────────────────────────────────
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/flutter_export_environment.sh
+ios/Flutter/Generated.xcconfig
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/settings.json
+.DS_Store
+*.iml

@@ -24,12 +24,11 @@ class CompanySession {
   static String? _companyId;
   static String? _companyName;
 
-  static String get companyId {
-    assert(_companyId != null, 'CompanySession not initialised');
-    return _companyId!;
-  }
+  // Safe getter — returns empty string instead of crashing before init
+  // FirebaseService checks isEmpty before making any DB calls
+  static String get companyId   => _companyId ?? '';
   static String get companyName => _companyName ?? '';
-  static bool   get isLoggedIn  => _companyId != null;
+  static bool   get isLoggedIn  => _companyId != null && _companyId!.isNotEmpty;
 
   static void init(String uid, {String? name}) {
     _companyId   = uid;
@@ -51,7 +50,13 @@ class CompanyLoginScreen extends StatefulWidget {
   /// goDirectly=true  → owner enters app directly (skip PIN)
   /// goDirectly=false → return to PIN screen for role selection
   final void Function({required bool goDirectly}) onAuthenticated;
-  const CompanyLoginScreen({super.key, required this.onAuthenticated});
+  /// Called when back arrow tapped (only shown when provided)
+  final VoidCallback? onBack;
+  const CompanyLoginScreen({
+    super.key,
+    required this.onAuthenticated,
+    this.onBack,
+  });
 
   @override
   State<CompanyLoginScreen> createState() => _CompanyLoginScreenState();
@@ -223,87 +228,95 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
       enableDrag: false,
       backgroundColor: Colors.transparent,
       useRootNavigator: true,
-      builder: (sheetCtx) => Container(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1A2035) : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          boxShadow: [BoxShadow(
-              color: Colors.black.withValues(alpha: 0.20),
-              blurRadius: 24, offset: const Offset(0, -6))],
+      isScrollControlled: true,   // lets sheet grow taller if needed
+      builder: (sheetCtx) => SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(24, 14, 24, 16),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1A2035) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [BoxShadow(
+                color: Colors.black.withValues(alpha: 0.20),
+                blurRadius: 24, offset: const Offset(0, -6))],
+          ),
+          // SingleChildScrollView prevents overflow on small screens
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              // Drag handle
+              Container(width: 40, height: 4,
+                  decoration: BoxDecoration(
+                      color: AppColors.inkMuted.withValues(alpha: 0.22),
+                      borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 20),
+
+              // Success icon — smaller on small screens
+              Container(
+                width: 64, height: 64,
+                decoration: BoxDecoration(
+                    color: okC.withValues(alpha: 0.12), shape: BoxShape.circle),
+                child: Icon(Icons.check_circle_rounded, size: 36, color: okC),
+              ),
+              const SizedBox(height: 12),
+              Text('Signed In!', style: GoogleFonts.inter(
+                  fontSize: 20, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text('Welcome, $name',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                      fontSize: 13, color: AppColors.inkMuted)),
+              const SizedBox(height: 22),
+
+              // ── Enter App (owner bypass) ──
+              SizedBox(width: double.infinity, height: 50,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.rocket_launch_rounded, size: 17),
+                  label: Text('Enter App', style: GoogleFonts.inter(
+                      fontSize: 15, fontWeight: FontWeight.w700)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primary, foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
+                  onPressed: () {
+                    Navigator.of(sheetCtx).pop();
+                    widget.onAuthenticated(goDirectly: true);
+                  },
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // ── Use PIN Screen ──
+              SizedBox(width: double.infinity, height: 50,
+                child: OutlinedButton.icon(
+                  icon: Icon(Icons.pin_rounded, size: 17, color: primary),
+                  label: Text('Use PIN Screen', style: GoogleFonts.inter(
+                      fontSize: 15, fontWeight: FontWeight.w600, color: primary)),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: primary.withValues(alpha: 0.35)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: () {
+                    Navigator.of(sheetCtx).pop();
+                    widget.onAuthenticated(goDirectly: false);
+                  },
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // ── Firebase sign-out ──
+              GestureDetector(
+                onTap: () => _confirmFirebaseSignOut(sheetCtx),
+                child: Text('Not you? Sign out',
+                    style: GoogleFonts.inter(
+                        fontSize: 12, color: AppColors.inkMuted,
+                        decoration: TextDecoration.underline)),
+              ),
+              const SizedBox(height: 4),
+            ]),
+          ),
         ),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          // Drag handle
-          Container(width: 40, height: 4,
-              decoration: BoxDecoration(
-                  color: AppColors.inkMuted.withValues(alpha: 0.22),
-                  borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 26),
-
-          // Success icon
-          Container(
-            width: 72, height: 72,
-            decoration: BoxDecoration(
-                color: okC.withValues(alpha: 0.12), shape: BoxShape.circle),
-            child: Icon(Icons.check_circle_rounded, size: 40, color: okC),
-          ),
-          const SizedBox(height: 14),
-          Text('Signed In!', style: GoogleFonts.inter(
-              fontSize: 22, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 6),
-          Text('Welcome, $name',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(fontSize: 13, color: AppColors.inkMuted)),
-          const SizedBox(height: 28),
-
-          // ── Enter App (owner bypass) ──
-          SizedBox(width: double.infinity, height: 52,
-            child: ElevatedButton.icon(
-              icon: const Icon(Icons.rocket_launch_rounded, size: 18),
-              label: Text('Enter App', style: GoogleFonts.inter(
-                  fontSize: 15, fontWeight: FontWeight.w700)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primary, foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                elevation: 0,
-              ),
-              onPressed: () {
-                Navigator.of(sheetCtx).pop();
-                widget.onAuthenticated(goDirectly: true);
-              },
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // ── Use PIN Screen ──
-          SizedBox(width: double.infinity, height: 52,
-            child: OutlinedButton.icon(
-              icon: Icon(Icons.pin_rounded, size: 18, color: primary),
-              label: Text('Use PIN Screen', style: GoogleFonts.inter(
-                  fontSize: 15, fontWeight: FontWeight.w600, color: primary)),
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(color: primary.withValues(alpha: 0.35)),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-              ),
-              onPressed: () {
-                Navigator.of(sheetCtx).pop();
-                widget.onAuthenticated(goDirectly: false);
-              },
-            ),
-          ),
-          const SizedBox(height: 18),
-
-          // ── Firebase sign-out (subtle, not prominent) ──
-          GestureDetector(
-            onTap: () => _confirmFirebaseSignOut(sheetCtx),
-            child: Text('Not you? Sign out',
-                style: GoogleFonts.inter(
-                    fontSize: 12, color: AppColors.inkMuted,
-                    decoration: TextDecoration.underline)),
-          ),
-        ]),
       ),
     );
   }
@@ -317,6 +330,18 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
 
     return Scaffold(
       backgroundColor: bg,
+      // Back button shown when opened from _AppGate as a screen (not a push)
+      appBar: widget.onBack != null
+          ? AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back_ios_new_rounded,
+                    size: 18, color: isDark ? Colors.white70 : Colors.black54),
+                onPressed: widget.onBack,
+              ),
+            )
+          : null,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/providers/app_state.dart';
+import 'app_logo.dart';
 import '../core/theme/app_colors.dart';
 import '../shared/widgets/shared_widgets.dart';
 import 'diagnostics_screen.dart';
@@ -213,32 +214,39 @@ class _AppIdentityForm extends ConsumerStatefulWidget {
 }
 
 class _AppIdentityState extends ConsumerState<_AppIdentityForm> {
-  late TextEditingController _appName, _currency, _dateFormat;
+  late TextEditingController _appName, _currency, _dateFormat, _logoUrl;
   bool _saved = false;
 
   @override
   void initState() {
     super.initState();
-    _appName = TextEditingController(text: widget.settings.appName);
-    _currency = TextEditingController(text: widget.settings.currency);
+    _appName    = TextEditingController(text: widget.settings.appName);
+    _currency   = TextEditingController(text: widget.settings.currency);
     _dateFormat = TextEditingController(text: widget.settings.dateFormat);
+    _logoUrl    = TextEditingController(text: widget.settings.logoUrl);
   }
 
   @override
-  void dispose() { _appName.dispose(); _currency.dispose(); _dateFormat.dispose(); super.dispose(); }
+  void dispose() { _appName.dispose(); _currency.dispose(); _dateFormat.dispose(); _logoUrl.dispose(); super.dispose(); }
 
   void _save() {
     ref.read(settingsProvider.notifier).save(widget.settings.copyWith(
       appName: _appName.text.trim(),
       currency: _currency.text.trim(),
       dateFormat: _dateFormat.text.trim(),
+      logoUrl: _logoUrl.text.trim(),
     ));
     setState(() => _saved = true);
     Future.delayed(const Duration(seconds: 2), () { if (mounted) setState(() => _saved = false); });
   }
 
   @override
-  Widget build(BuildContext context) => Column(children: [
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    // ── Company Logo ──────────────────────────────────────────────────────────
+    FieldLabel('Company Logo'),
+    const LogoPickerWidget(),
+    const SizedBox(height: 16),
+    // ── Identity fields ───────────────────────────────────────────────────────
     _TF(label: 'App Name', ctrl: _appName, hint: 'e.g. MrWater, AquaFlow'),
     _TF(label: 'Currency Symbol', ctrl: _currency, hint: '₹'),
     _TF(label: 'Date Format', ctrl: _dateFormat, hint: 'dd MMM yyyy'),
@@ -1034,9 +1042,11 @@ class _StaffEditSheetState extends ConsumerState<_StaffEditSheet> {
     ('inventory',     '📦 Inventory',         'View current stock levels'),
     ('load_unload',   '🔄 Load / Unload',     'Warehouse jar in/out movements'),
     ('payments',      '💳 Payments',          'View and record dues & advances'),
+    ('expenses',      '💸 Expenses',          'View and add business expenses'),
     ('reports',       '📊 Reports',           'Generate and export reports'),
     ('notifications', '🔔 Notifications',     'View delivery alerts and reminders'),
-    ('expenses',      '💸 Expenses',          'View and add business expenses'),
+    ('smart_entry',   '📷 Smart Entry',       'OCR photo scan for bulk entry'),
+    ('settings',      '⚙️ Settings',          'App settings and staff management'),
   ];
 
   @override
