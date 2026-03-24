@@ -101,7 +101,15 @@ jobs:
           ${{ secrets.FIREBASE_CONFIG_JSON }}
           EOF
           
-          # Check if the JSON is valid (optional but helpful for debugging)
+          # Write the Google Services JSON safely
+          cat <<'EOF' > android/app/google-services.json
+          ${{ secrets.GOOGLE_SERVICES_JSON }}
+          EOF
+
+          # Decode the keystore from base64
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/mrwater-release.jks
+          
+          # Check if the JSON is valid
           if ! command -v jq &> /dev/null; then
             echo "jq not found, skipping validation"
           else
@@ -109,6 +117,11 @@ jobs:
           fi
 
           flutter build apk --release --dart-define-from-file=dart_defines.json
+        env:
+          KEYSTORE_FILE: "mrwater-release.jks"
+          KEYSTORE_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
+          KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
+          KEYSTORE_KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
           # The app already expects FIREBASE_APP_ID_ANDROID, so no replacement is needed.
 
       - name: 📤 Upload APK artifact

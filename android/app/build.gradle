@@ -40,19 +40,16 @@ if (hasKeystore) {
     }
 }
 
-// 🔐 CI/CD Secret Bypass — Only use keystore if the file actually exists on disk
-// This prevents build failure on GitHub Actions if secrets aren't set up yet.
-def storeFileExists = false
-if (hasKeystore && keystoreProperties['storeFile']) {
-    try {
-        def sf = file(keystoreProperties['storeFile'])
-        storeFileExists = sf.exists()
-    } catch (Exception e) {
-        // If file path is invalid (like a Windows path on Linux), ignore it
-        storeFileExists = false
-    }
+// 🔐 CI/CD Secret Bypass — Use Environment Variables if available (GitHub Actions)
+// This avoids needing a key.properties file in the CI environment.
+def keystoreFile = project.hasProperty('RELEASE_STORE_FILE') ? file(project.getProperty('RELEASE_STORE_FILE')) : null
+if (System.getenv("KEYSTORE_FILE")) {
+    keystoreFile = file(System.getenv("KEYSTORE_FILE"))
+} else if (hasKeystore && keystoreProperties['storeFile']) {
+    keystoreFile = file(keystoreProperties['storeFile'])
 }
-def canSignRelease = hasKeystore && storeFileExists
+
+def canSignRelease = (keystoreFile != null && keystoreFile.exists()) || System.getenv("KEYSTORE_PASSWORD") != null
 
 android {
     namespace "com.mrwater.mrwaterprov1"
@@ -89,11 +86,18 @@ android {
 
     // ── Release signing config ─────────────────────────────────────────────────
     signingConfigs {
-        if (canSignRelease) {
-            release {
+        release {
+            if (System.getenv("KEYSTORE_PASSWORD")) {
+                // Use Environment Variables (CI/CD)
+                storeFile keystoreFile
+                storePassword System.getenv("KEYSTORE_STORE_PASSWORD")
+                keyAlias System.getenv("KEYSTORE_KEY_ALIAS")
+                keyPassword System.getenv("KEYSTORE_KEY_PASSWORD")
+            } else if (canSignRelease) {
+                // Use key.properties (Local)
                 keyAlias keystoreProperties['keyAlias']
                 keyPassword keystoreProperties['keyPassword']
-                storeFile file(keystoreProperties['storeFile'])
+                storeFile keystoreFile
                 storePassword keystoreProperties['storePassword']
             }
         }
