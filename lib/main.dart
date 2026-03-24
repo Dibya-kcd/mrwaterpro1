@@ -20,6 +20,9 @@ import 'features/splash_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  debugPrint('--- DEPLOYMENT DEBUG ---');
+  debugPrint('Build Date: 2026-03-24 12:00 (Manual Check)');
+  
   try {
     debugPrint('Firebase: Initializing for ${FirebaseConfig.projectId}...');
     if (FirebaseConfig.isConfigured) {

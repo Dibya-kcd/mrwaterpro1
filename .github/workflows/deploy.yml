@@ -34,17 +34,16 @@ jobs:
         run: flutter pub get
 
       - name: 🔍 Verify and Build Web
-        env:
-          CONFIG_JSON: ${{ secrets.FIREBASE_CONFIG_JSON }}
         run: |
-          if [ -z "$CONFIG_JSON" ]; then
+          if [ -z "${{ secrets.FIREBASE_CONFIG_JSON }}" ]; then
             echo "❌ ERROR: FIREBASE_CONFIG_JSON is missing in GitHub Secrets!"
             exit 1
           fi
           
-          # Write the secret JSON safely
-          cat <<EOF > dart_defines.json
-          $CONFIG_JSON
+          # Write the secret JSON safely using single-quote heredoc
+          # This prevents any shell expansion of the JSON content (like backticks)
+          cat <<'EOF' > dart_defines.json
+          ${{ secrets.FIREBASE_CONFIG_JSON }}
           EOF
           
           # Check if the JSON is valid (optional but helpful for debugging)
@@ -91,17 +90,15 @@ jobs:
         run: flutter pub get
 
       - name: 🔍 Verify and Build APK
-        env:
-          CONFIG_JSON: ${{ secrets.FIREBASE_CONFIG_JSON }}
         run: |
-          if [ -z "$CONFIG_JSON" ]; then
+          if [ -z "${{ secrets.FIREBASE_CONFIG_JSON }}" ]; then
             echo "❌ ERROR: FIREBASE_CONFIG_JSON is missing in GitHub Secrets!"
             exit 1
           fi
           
-          # Write the secret JSON safely
-          cat <<EOF > dart_defines.json
-          $CONFIG_JSON
+          # Write the secret JSON safely using single-quote heredoc
+          cat <<'EOF' > dart_defines.json
+          ${{ secrets.FIREBASE_CONFIG_JSON }}
           EOF
           
           # Check if the JSON is valid (optional but helpful for debugging)
