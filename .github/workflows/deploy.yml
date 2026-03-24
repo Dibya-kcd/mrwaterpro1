@@ -42,13 +42,15 @@ jobs:
             exit 1
           fi
           
-          # Use printf to avoid extra newlines and handle the JSON securely
-          printf "%s" "$CONFIG_JSON" > dart_defines.json
+          # Write the secret JSON directly to dart_defines.json
+          echo "$CONFIG_JSON" > dart_defines.json
           
-          # Fix mismatch: The app expects FIREBASE_APP_ID (for Web), 
-          # but the secret has FIREBASE_APP_ID_WEB.
-          # (Using a more precise replacement to avoid duplicate keys)
-          sed -i 's/"FIREBASE_APP_ID_WEB":/"FIREBASE_APP_ID":/g' dart_defines.json
+          # Check if the JSON is valid (optional but helpful for debugging)
+          if ! command -v jq &> /dev/null; then
+            echo "jq not found, skipping validation"
+          else
+            jq empty dart_defines.json || { echo "❌ ERROR: FIREBASE_CONFIG_JSON is not a valid JSON!"; exit 1; }
+          fi
 
           flutter build web --release --base-href "/mrwaterprov1/" --dart-define-from-file=dart_defines.json
 
@@ -95,12 +97,18 @@ jobs:
             exit 1
           fi
           
-          # Use printf to avoid extra newlines and handle the JSON securely
-          printf "%s" "$CONFIG_JSON" > dart_defines.json
+          # Write the secret JSON directly to dart_defines.json
+          echo "$CONFIG_JSON" > dart_defines.json
           
-          # The app already expects FIREBASE_APP_ID_ANDROID, so no replacement is needed.
+          # Check if the JSON is valid (optional but helpful for debugging)
+          if ! command -v jq &> /dev/null; then
+            echo "jq not found, skipping validation"
+          else
+            jq empty dart_defines.json || { echo "❌ ERROR: FIREBASE_CONFIG_JSON is not a valid JSON!"; exit 1; }
+          fi
 
           flutter build apk --release --dart-define-from-file=dart_defines.json
+          # The app already expects FIREBASE_APP_ID_ANDROID, so no replacement is needed.
 
       - name: 📤 Upload APK artifact
         uses: actions/upload-artifact@v4

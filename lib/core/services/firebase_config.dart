@@ -57,14 +57,26 @@ class FirebaseConfig {
   // ── Read from --dart-define at compile time ───────────────────────────────
   // These are baked into the binary at build time — not readable as plain text
   // in the compiled output (unlike a .env file bundled as an asset).
-  static const _apiKey      = String.fromEnvironment('FIREBASE_API_KEY');
-  static const _authDomain  = String.fromEnvironment('FIREBASE_AUTH_DOMAIN');
-  static const databaseUrl  = String.fromEnvironment('FIREBASE_DATABASE_URL');
-  static const projectId    = String.fromEnvironment('FIREBASE_PROJECT_ID');
-  static const _storage     = String.fromEnvironment('FIREBASE_STORAGE_BUCKET');
-  static const _senderId    = String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID');
-  static const _appId       = String.fromEnvironment('FIREBASE_APP_ID');
-  static const _appIdAndroid = String.fromEnvironment('FIREBASE_APP_ID_ANDROID');
+  static const _apiKeyRaw      = String.fromEnvironment('FIREBASE_API_KEY');
+  static const _authDomainRaw  = String.fromEnvironment('FIREBASE_AUTH_DOMAIN');
+  static const _databaseUrlRaw = String.fromEnvironment('FIREBASE_DATABASE_URL');
+  static const _projectIdRaw   = String.fromEnvironment('FIREBASE_PROJECT_ID');
+  static const _storageRaw     = String.fromEnvironment('FIREBASE_STORAGE_BUCKET');
+  static const _senderIdRaw    = String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID');
+  static const _appIdRaw       = String.fromEnvironment('FIREBASE_APP_ID');
+  static const _appIdAndroidRaw = String.fromEnvironment('FIREBASE_APP_ID_ANDROID');
+
+  // ── Getters with Trimming (Sanitize values from CI/CD) ──────────────────
+  // Trimming is crucial because CI/CD secrets can sometimes contain 
+  // hidden leading/trailing whitespace which breaks Firebase initialization.
+  static String get apiKey      => _apiKeyRaw.trim();
+  static String get authDomain  => _authDomainRaw.trim();
+  static String get databaseUrl  => _databaseUrlRaw.trim();
+  static String get projectId    => _projectIdRaw.trim();
+  static String get storageBucket => _storageRaw.trim();
+  static String get senderId    => _senderIdRaw.trim();
+  static String get appId       => _appIdRaw.trim();
+  static String get appIdAndroid => _appIdAndroidRaw.trim();
 
   // ── RTDB node paths ───────────────────────────────────────────────────────
   static const nodeSettings           = 'settings';
@@ -84,17 +96,17 @@ class FirebaseConfig {
 
   // ── FirebaseOptions ───────────────────────────────────────────────────────
   static FirebaseOptions get currentPlatform => FirebaseOptions(
-    apiKey:            _apiKey,
-    appId:             kIsWeb ? _appId : _appIdAndroid,
-    messagingSenderId: _senderId,
+    apiKey:            apiKey,
+    appId:             kIsWeb ? appId : appIdAndroid,
+    messagingSenderId: senderId,
     projectId:         projectId,
-    authDomain:        _authDomain,
+    authDomain:        authDomain,
     databaseURL:       databaseUrl,
-    storageBucket:     _storage,
+    storageBucket:     storageBucket,
   );
 
   /// Returns true if credentials were supplied at build time.
   /// Call this in main() to catch missing --dart-define flags early.
   static bool get isConfigured =>
-      _apiKey.isNotEmpty && projectId.isNotEmpty && databaseUrl.isNotEmpty;
+      apiKey.isNotEmpty && projectId.isNotEmpty && databaseUrl.isNotEmpty;
 }
