@@ -34,12 +34,23 @@ jobs:
         run: flutter pub get
 
       - name: 🔍 Verify and Build Web
+        env:
+          CONFIG_JSON: ${{ secrets.FIREBASE_CONFIG_JSON }}
         run: |
-          if [ -z '${{ secrets.FIREBASE_CONFIG_JSON }}' ]; then
+          if [ -z "$CONFIG_JSON" ]; then
             echo "❌ ERROR: FIREBASE_CONFIG_JSON is missing in GitHub Secrets!"
             exit 1
           fi
-          echo '${{ secrets.FIREBASE_CONFIG_JSON }}' > dart_defines.json
+          
+          # Write the secret to a file safely
+          echo "$CONFIG_JSON" > dart_defines.json
+          
+          # Fix mismatch: Ensure FIREBASE_APP_ID is present in the JSON
+          # (App expects FIREBASE_APP_ID, but JSON might have FIREBASE_APP_ID_WEB)
+          if grep -q "FIREBASE_APP_ID_WEB" dart_defines.json; then
+            sed -i 's/FIREBASE_APP_ID_WEB/FIREBASE_APP_ID/g' dart_defines.json
+          fi
+
           flutter build web --release --base-href "/mrwaterprov1/" --dart-define-from-file=dart_defines.json
 
       - name: 🚀 Deploy to GitHub Pages
@@ -77,12 +88,23 @@ jobs:
         run: flutter pub get
 
       - name: 🔍 Verify and Build APK
+        env:
+          CONFIG_JSON: ${{ secrets.FIREBASE_CONFIG_JSON }}
         run: |
-          if [ -z '${{ secrets.FIREBASE_CONFIG_JSON }}' ]; then
+          if [ -z "$CONFIG_JSON" ]; then
             echo "❌ ERROR: FIREBASE_CONFIG_JSON is missing in GitHub Secrets!"
             exit 1
           fi
-          echo '${{ secrets.FIREBASE_CONFIG_JSON }}' > dart_defines.json
+          
+          # Write the secret to a file safely
+          echo "$CONFIG_JSON" > dart_defines.json
+          
+          # Fix mismatch: Ensure FIREBASE_APP_ID is present in the JSON
+          # (App expects FIREBASE_APP_ID, but JSON might have FIREBASE_APP_ID_ANDROID)
+          if grep -q "FIREBASE_APP_ID_ANDROID" dart_defines.json; then
+            sed -i 's/FIREBASE_APP_ID_ANDROID/FIREBASE_APP_ID/g' dart_defines.json
+          fi
+
           flutter build apk --release --dart-define-from-file=dart_defines.json
 
       - name: 📤 Upload APK artifact
