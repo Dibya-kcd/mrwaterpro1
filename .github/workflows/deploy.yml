@@ -33,25 +33,16 @@ jobs:
       - name: 📦 Flutter pub get
         run: flutter pub get
 
-      - name: 🔍 Verify Secrets and Build Web
+      - name: 🔍 Verify and Build Web
         run: |
-          if [ -z "${{ secrets.FIREBASE_API_KEY }}" ]; then
-            echo "❌ ERROR: FIREBASE_API_KEY is missing in GitHub Secrets!"
+          if [ -z '${{ secrets.FIREBASE_CONFIG_JSON }}' ]; then
+            echo "❌ ERROR: FIREBASE_CONFIG_JSON is missing in GitHub Secrets!"
             exit 1
           fi
-          cat > dart_defines.json << EOF
-          {
-            "FIREBASE_API_KEY": "${{ secrets.FIREBASE_API_KEY }}",
-            "FIREBASE_AUTH_DOMAIN": "${{ secrets.FIREBASE_AUTH_DOMAIN }}",
-            "FIREBASE_DATABASE_URL": "${{ secrets.FIREBASE_DATABASE_URL }}",
-            "FIREBASE_PROJECT_ID": "${{ secrets.FIREBASE_PROJECT_ID }}",
-            "FIREBASE_STORAGE_BUCKET": "${{ secrets.FIREBASE_STORAGE_BUCKET }}",
-            "FIREBASE_MESSAGING_SENDER_ID": "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}",
-            "FIREBASE_APP_ID": "${{ secrets.FIREBASE_APP_ID_WEB }}",
-            "FIREBASE_APP_ID_ANDROID": "${{ secrets.FIREBASE_APP_ID_ANDROID }}"
-          }
-          EOF
+          echo '${{ secrets.FIREBASE_CONFIG_JSON }}' > dart_defines.json
           flutter build web --release --base-href "/mrwaterprov1/" --dart-define-from-file=dart_defines.json
+
+      - name: 🚀 Deploy to GitHub Pages
 
       - name: 🚀 Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
@@ -87,24 +78,13 @@ jobs:
       - name: 📦 Flutter pub get
         run: flutter pub get
 
-      - name: � Verify Secrets and Build APK
+      - name: 🔍 Verify and Build APK
         run: |
-          if [ -z "${{ secrets.FIREBASE_API_KEY }}" ]; then
-            echo "❌ ERROR: FIREBASE_API_KEY is missing in GitHub Secrets!"
+          if [ -z '${{ secrets.FIREBASE_CONFIG_JSON }}' ]; then
+            echo "❌ ERROR: FIREBASE_CONFIG_JSON is missing in GitHub Secrets!"
             exit 1
           fi
-          cat > dart_defines.json << EOF
-          {
-            "FIREBASE_API_KEY": "${{ secrets.FIREBASE_API_KEY }}",
-            "FIREBASE_AUTH_DOMAIN": "${{ secrets.FIREBASE_AUTH_DOMAIN }}",
-            "FIREBASE_DATABASE_URL": "${{ secrets.FIREBASE_DATABASE_URL }}",
-            "FIREBASE_PROJECT_ID": "${{ secrets.FIREBASE_PROJECT_ID }}",
-            "FIREBASE_STORAGE_BUCKET": "${{ secrets.FIREBASE_STORAGE_BUCKET }}",
-            "FIREBASE_MESSAGING_SENDER_ID": "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}",
-            "FIREBASE_APP_ID": "${{ secrets.FIREBASE_APP_ID_WEB }}",
-            "FIREBASE_APP_ID_ANDROID": "${{ secrets.FIREBASE_APP_ID_ANDROID }}"
-          }
-          EOF
+          echo '${{ secrets.FIREBASE_CONFIG_JSON }}' > dart_defines.json
           flutter build apk --release --dart-define-from-file=dart_defines.json
 
       - name: 📤 Upload APK artifact
