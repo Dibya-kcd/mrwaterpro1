@@ -35,7 +35,12 @@ jobs:
 
       - name: ⚙️ Precache Flutter Artifacts
         run: flutter precache
-
+      
+      - name: 📝 Write local.properties
+        run: |
+          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
+          echo "sdk.dir=$ANDROID_SDK_ROOT" >> android/local.properties
+      
       - name: 📦 Flutter pub get
         run: flutter pub get
 
