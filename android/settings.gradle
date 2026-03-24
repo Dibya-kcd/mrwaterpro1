@@ -5,12 +5,18 @@ pluginManagement {
         if (propertiesFile.exists()) {
             propertiesFile.withInputStream { properties.load(it) }
         }
+        // 1. Try local.properties first (local dev)
         def sdkPath = properties.getProperty("flutter.sdk")
-        if (sdkPath == null) {
+        // 2. Fall back to FLUTTER_ROOT env var (CI/CD)
+        if (sdkPath == null || sdkPath.trim().isEmpty()) {
             sdkPath = System.getenv("FLUTTER_ROOT")
         }
-        if (sdkPath == null) {
-            throw new GradleException("Flutter SDK not found. Set flutter.sdk in local.properties or FLUTTER_ROOT env var.")
+        if (sdkPath == null || sdkPath.trim().isEmpty()) {
+            throw new GradleException(
+                "Flutter SDK not found.\n" +
+                "  - Local dev: set flutter.sdk in android/local.properties\n" +
+                "  - CI/CD: set the FLUTTER_ROOT environment variable"
+            )
         }
         return sdkPath
     }()

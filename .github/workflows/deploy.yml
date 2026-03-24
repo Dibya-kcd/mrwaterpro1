@@ -91,11 +91,21 @@ jobs:
           flutter-version: '3.29.0'
           channel: 'stable'
           cache: true
+
       - name: 🩺 Flutter Doctor
         run: flutter doctor -v
 
       - name: ⚙️ Precache Flutter Artifacts
         run: flutter precache
+
+      # ── FIX: Inject correct SDK paths so Gradle can find Flutter ──────────
+      # Without this, local.properties contains hardcoded Windows paths
+      # from the developer's machine which don't exist on the Linux runner,
+      # causing all Flutter embedding classes to be unresolvable (31 errors).
+      - name: 📝 Write local.properties
+        run: |
+          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
+          echo "sdk.dir=$ANDROID_SDK_ROOT" >> android/local.properties
 
       - name: 📦 Flutter pub get
         run: flutter pub get
@@ -135,7 +145,6 @@ jobs:
           KEYSTORE_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
           KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
           KEYSTORE_KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
-          # The app already expects FIREBASE_APP_ID_ANDROID, so no replacement is needed.
 
       - name: 📤 Upload APK artifact
         uses: actions/upload-artifact@v4

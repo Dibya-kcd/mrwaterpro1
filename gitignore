@@ -1,42 +1,18 @@
-# ══════════════════════════════════════════════════════════════════════════════
-# .gitignore — MrWater Pro
-# ══════════════════════════════════════════════════════════════════════════════
-
-# ── Secrets — NEVER commit these ─────────────────────────────────────────────
 dart_defines.env
+dart_defines.json
 lib/core/services/firebase_config.dart
-android/app/google-services.json
-android/key.properties
-*.jks
-*.keystore
+google-services.json
 
-# ── Flutter / Dart ────────────────────────────────────────────────────────────
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
-build/
-*.dart_snapshots
-
-# ── Android ───────────────────────────────────────────────────────────────────
-android/.gradle/
-android/app/.cxx/
+# Android — machine-specific, never commit these
 android/local.properties
-*.apk
-*.aab
+android/key.properties
+android/*.jks
+android/*.keystore
+android/app/*.jks
+android/app/*.keystore
 
-# ── iOS ───────────────────────────────────────────────────────────────────────
-ios/Pods/
-ios/.symlinks/
-ios/Flutter/flutter_export_environment.sh
-ios/Flutter/Generated.xcconfig
-
-# ── Web ───────────────────────────────────────────────────────────────────────
-build/web/
-
-# ── IDE ───────────────────────────────────────────────────────────────────────
-.idea/
-.vscode/settings.json
-.DS_Store
-*.iml
+# Gradle build cache — generated locally, never commit
+android/.gradle/
+.gradle/
+build/
+android/build/
