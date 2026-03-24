@@ -140,10 +140,6 @@ dependencies {
     // Core library desugaring — enables java.time on API < 26
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
 
-    // 🛠️ Force-add the Flutter embedding to fix "Unresolved reference: io.flutter" 
-    // This is sometimes needed when the Gradle plugin fails to inject it automatically.
-    implementation "io.flutter:flutter_embedding_release:1.0.0-+"
-
     // Firebase BoM — manages all Firebase SDK versions consistently
     implementation platform('com.google.firebase:firebase-bom:33.5.1')
     implementation 'com.google.firebase:firebase-database-ktx'
