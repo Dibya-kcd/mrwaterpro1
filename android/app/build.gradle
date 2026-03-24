@@ -5,6 +5,12 @@ plugins {
     id "com.google.gms.google-services"
 }
 
+// ── FIX: Manually inject Flutter Gradle scripts if plugin fails ──────────
+def flutterRoot = System.getenv("FLUTTER_ROOT")
+if (flutterRoot != null) {
+    apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
+}
+
 def localProperties = new Properties()
 def localPropertiesFile = rootProject.file('local.properties')
 if (localPropertiesFile.exists()) {
@@ -55,21 +61,14 @@ android {
     signingConfigs {
         release {
             if (System.getenv("KEYSTORE_STORE_PASSWORD") != null) {
-                // CI/CD Environment (GitHub Actions)
                 storeFile file(System.getenv("KEYSTORE_FILE"))
                 storePassword System.getenv("KEYSTORE_STORE_PASSWORD")
                 keyAlias System.getenv("KEYSTORE_KEY_ALIAS")
                 keyPassword System.getenv("KEYSTORE_KEY_PASSWORD")
             } else if (hasKeystore) {
-                // Local Environment
                 keyAlias keystoreProperties['keyAlias']
                 keyPassword keystoreProperties['keyPassword']
-                // Use try-catch to prevent evaluation errors if local path is malformed
-                try {
-                    storeFile file(keystoreProperties['storeFile'])
-                } catch (Exception e) {
-                    println "Warning: Could not load local keystore file: ${e.message}"
-                }
+                storeFile file(keystoreProperties['storeFile'])
                 storePassword keystoreProperties['storePassword']
             }
         }

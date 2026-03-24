@@ -101,7 +101,7 @@ jobs:
         run: flutter doctor -v
 
       - name: ⚙️ Precache Flutter Artifacts
-        run: flutter precache
+        run: flutter precache --android
 
       # ── FIX: Inject correct SDK paths so Gradle can find Flutter ──────────
       # Without this, local.properties contains hardcoded Windows paths
