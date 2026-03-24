@@ -42,14 +42,14 @@ jobs:
             exit 1
           fi
           
-          # Write the secret to a file safely
-          echo "$CONFIG_JSON" > dart_defines.json
+          # Use a safer way to write the JSON to a file
+          # Base64 encoding/decoding is the most reliable way to handle JSON in shell
+          echo "$CONFIG_JSON" | base64 > config.b64
+          base64 -d config.b64 > dart_defines.json
           
-          # Fix mismatch: Ensure FIREBASE_APP_ID is present in the JSON
-          # (App expects FIREBASE_APP_ID, but JSON might have FIREBASE_APP_ID_WEB)
-          if grep -q "FIREBASE_APP_ID_WEB" dart_defines.json; then
-            sed -i 's/FIREBASE_APP_ID_WEB/FIREBASE_APP_ID/g' dart_defines.json
-          fi
+          # Rename keys to match what the app expects
+          sed -i 's/FIREBASE_APP_ID_WEB/FIREBASE_APP_ID/g' dart_defines.json
+          sed -i 's/FIREBASE_APP_ID_ANDROID/FIREBASE_APP_ID/g' dart_defines.json
 
           flutter build web --release --base-href "/mrwaterprov1/" --dart-define-from-file=dart_defines.json
 
@@ -96,14 +96,14 @@ jobs:
             exit 1
           fi
           
-          # Write the secret to a file safely
-          echo "$CONFIG_JSON" > dart_defines.json
+          # Use a safer way to write the JSON to a file
+          # Base64 encoding/decoding is the most reliable way to handle JSON in shell
+          echo "$CONFIG_JSON" | base64 > config.b64
+          base64 -d config.b64 > dart_defines.json
           
-          # Fix mismatch: Ensure FIREBASE_APP_ID is present in the JSON
-          # (App expects FIREBASE_APP_ID, but JSON might have FIREBASE_APP_ID_ANDROID)
-          if grep -q "FIREBASE_APP_ID_ANDROID" dart_defines.json; then
-            sed -i 's/FIREBASE_APP_ID_ANDROID/FIREBASE_APP_ID/g' dart_defines.json
-          fi
+          # Rename keys to match what the app expects
+          sed -i 's/FIREBASE_APP_ID_WEB/FIREBASE_APP_ID/g' dart_defines.json
+          sed -i 's/FIREBASE_APP_ID_ANDROID/FIREBASE_APP_ID/g' dart_defines.json
 
           flutter build apk --release --dart-define-from-file=dart_defines.json
 

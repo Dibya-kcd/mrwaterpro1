@@ -21,11 +21,17 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
+    debugPrint('Firebase: Initializing for ${FirebaseConfig.projectId}...');
+    if (FirebaseConfig.isConfigured) {
+      debugPrint('Firebase: Config looks OK (API Key found)');
+    } else {
+      debugPrint('Firebase: ⚠️ WARNING: Missing API Key or Project ID in build config!');
+    }
     await Firebase.initializeApp(options: FirebaseConfig.currentPlatform);
     final db = FirebaseDatabase.instanceFor(
         app: Firebase.app(), databaseURL: FirebaseConfig.databaseUrl);
     final snap = await db.ref('.info/connected').get();
-    debugPrint('Firebase: ${FirebaseConfig.projectId} connected=${snap.value}');
+    debugPrint('Firebase: Connection state=${snap.value}');
   } catch (e) {
     debugPrint('Firebase init error: $e');
   }
