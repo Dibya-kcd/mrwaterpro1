@@ -123,12 +123,21 @@ class _CompanyLoginScreenState extends State<CompanyLoginScreen>
     if (!_formKey.currentState!.validate()) return;
     setState(() { _loading = true; _error = null; });
     try {
+      debugPrint('FirebaseAuth: Attempting sign in for ${_emailCtrl.text.trim()}...');
       final c = await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: _emailCtrl.text.trim(), password: _pwCtrl.text);
+      debugPrint('FirebaseAuth: Sign in successful for ${c.user?.email}');
       CompanySession.init(c.user!.uid,
           name: c.user!.displayName ?? c.user!.email ?? '');
       if (mounted) _showSuccess();
-    } on FirebaseAuthException catch (e) { _fail(e.code); }
+    } on FirebaseAuthException catch (e) { 
+      debugPrint('FirebaseAuth error (code: ${e.code}): ${e.message}');
+      debugPrint('FirebaseAuth full details: $e');
+      _fail(e.code); 
+    } catch (e) {
+      debugPrint('FirebaseAuth UNKNOWN error: $e');
+      _fail('unknown');
+    }
   }
 
   Future<void> _signUp() async {

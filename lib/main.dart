@@ -24,8 +24,18 @@ void main() async {
     debugPrint('Firebase: Initializing for ${FirebaseConfig.projectId}...');
     if (FirebaseConfig.isConfigured) {
       debugPrint('Firebase: Config looks OK (API Key found)');
-      debugPrint('Firebase: Database URL = ${FirebaseConfig.databaseUrl}');
-      debugPrint('Firebase: App ID length = ${FirebaseConfig.appId.length}');
+      debugPrint('Firebase: Database URL = [${FirebaseConfig.databaseUrl}]');
+      
+      // Mask the key for safe logging (e.g. AIza...2ho)
+      final key = FirebaseConfig.apiKey;
+      final appId = FirebaseConfig.appId;
+      final maskedKey = key.length > 8 ? '${key.substring(0, 4)}...${key.substring(key.length - 4)}' : 'INVALID';
+      final maskedAppId = appId.length > 8 ? '${appId.substring(0, 4)}...${appId.substring(appId.length - 4)}' : 'INVALID';
+      
+      debugPrint('Firebase: Masked API Key = $maskedKey');
+      debugPrint('Firebase: Masked App ID  = $maskedAppId');
+      debugPrint('Firebase: Auth Domain    = ${FirebaseConfig.authDomain}');
+      
       if (FirebaseConfig.appId.length < 30) {
         debugPrint('Firebase: ⚠️ WARNING: App ID seems too short! Please verify it in GitHub Secrets.');
       }
