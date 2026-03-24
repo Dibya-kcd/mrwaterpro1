@@ -24,6 +24,7 @@ void main() async {
     debugPrint('Firebase: Initializing for ${FirebaseConfig.projectId}...');
     if (FirebaseConfig.isConfigured) {
       debugPrint('Firebase: Config looks OK (API Key found)');
+      debugPrint('Firebase: Database URL = ${FirebaseConfig.databaseUrl}');
     } else {
       debugPrint('Firebase: ⚠️ WARNING: Missing API Key or Project ID in build config!');
     }
