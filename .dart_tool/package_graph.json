@@ -1,10 +1,10 @@
 {
   "roots": [
-    "mrwaterpro"
+    "mrwaterprov1"
   ],
   "packages": [
     {
-      "name": "mrwaterpro",
+      "name": "mrwaterprov1",
       "version": "2.1.0+1",
       "dependencies": [
         "firebase_auth",

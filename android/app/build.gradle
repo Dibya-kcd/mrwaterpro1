@@ -1,7 +1,6 @@
 plugins {
     id "com.android.application"
-    id "org.jetbrains.kotlin.android"
-    // Flutter plugin — must come AFTER android + kotlin
+    // Flutter plugin — must come AFTER android
     id "dev.flutter.flutter-gradle-plugin"
     // Firebase Google Services — processes google-services.json
     id "com.google.gms.google-services"
@@ -64,11 +63,8 @@ android {
         coreLibraryDesugaringEnabled true
     }
 
-    kotlinOptions {
-        jvmTarget = '1.8'
-    }
-
     sourceSets {
+        main.java.srcDirs += 'src/main/java'
         main.java.srcDirs += 'src/main/kotlin'
     }
 
@@ -144,7 +140,9 @@ dependencies {
     // Core library desugaring — enables java.time on API < 26
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
 
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.10"
+    // 🛠️ Force-add the Flutter embedding to fix "Unresolved reference: io.flutter" 
+    // This is sometimes needed when the Gradle plugin fails to inject it automatically.
+    implementation "io.flutter:flutter_embedding_release:1.0.0-+"
 
     // Firebase BoM — manages all Firebase SDK versions consistently
     implementation platform('com.google.firebase:firebase-bom:33.5.1')
