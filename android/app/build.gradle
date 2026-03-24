@@ -25,7 +25,7 @@ if (hasKeystore) {
     }
 }
 
-def canSignRelease = System.getenv("KEYSTORE_PASSWORD") != null || (hasKeystore && keystoreProperties['storeFile'] != null)
+def canSignRelease = System.getenv("KEYSTORE_STORE_PASSWORD") != null || (hasKeystore && keystoreProperties['storeFile'] != null)
 
 android {
     namespace "com.mrwater.mrwaterprov1"
@@ -54,15 +54,22 @@ android {
 
     signingConfigs {
         release {
-            if (System.getenv("KEYSTORE_PASSWORD")) {
+            if (System.getenv("KEYSTORE_STORE_PASSWORD") != null) {
+                // CI/CD Environment (GitHub Actions)
                 storeFile file(System.getenv("KEYSTORE_FILE"))
                 storePassword System.getenv("KEYSTORE_STORE_PASSWORD")
                 keyAlias System.getenv("KEYSTORE_KEY_ALIAS")
                 keyPassword System.getenv("KEYSTORE_KEY_PASSWORD")
-            } else if (canSignRelease) {
+            } else if (hasKeystore) {
+                // Local Environment
                 keyAlias keystoreProperties['keyAlias']
                 keyPassword keystoreProperties['keyPassword']
-                storeFile file(keystoreProperties['storeFile'])
+                // Use try-catch to prevent evaluation errors if local path is malformed
+                try {
+                    storeFile file(keystoreProperties['storeFile'])
+                } catch (Exception e) {
+                    println "Warning: Could not load local keystore file: ${e.message}"
+                }
                 storePassword keystoreProperties['storePassword']
             }
         }
