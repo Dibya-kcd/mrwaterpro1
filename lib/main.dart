@@ -25,14 +25,28 @@ void main() async {
     if (FirebaseConfig.isConfigured) {
       debugPrint('Firebase: Config looks OK (API Key found)');
       debugPrint('Firebase: Database URL = ${FirebaseConfig.databaseUrl}');
+      debugPrint('Firebase: App ID length = ${FirebaseConfig.appId.length}');
+      if (FirebaseConfig.appId.length < 30) {
+        debugPrint('Firebase: ⚠️ WARNING: App ID seems too short! Please verify it in GitHub Secrets.');
+      }
     } else {
       debugPrint('Firebase: ⚠️ WARNING: Missing API Key or Project ID in build config!');
     }
-    await Firebase.initializeApp(options: FirebaseConfig.currentPlatform);
-    final db = FirebaseDatabase.instanceFor(
+
+    // Use a try-catch specifically for initialization to provide more context
+    try {
+      await Firebase.initializeApp(options: FirebaseConfig.currentPlatform);
+      debugPrint('Firebase: App initialized successfully');
+    } catch (e) {
+      debugPrint('Firebase initialization CRITICAL error: $e');
+      rethrow; // Don't continue if init fails
+    }
+
+    // Lazily initialize database connection. 
+    // We don't await .info/connected here because it can hang on some networks/Web builds.
+    FirebaseDatabase.instanceFor(
         app: Firebase.app(), databaseURL: FirebaseConfig.databaseUrl);
-    final snap = await db.ref('.info/connected').get();
-    debugPrint('Firebase: Connection state=${snap.value}');
+    debugPrint('Firebase: Database connection prepared');
   } catch (e) {
     debugPrint('Firebase init error: $e');
   }

@@ -64,19 +64,44 @@ class FirebaseConfig {
   static const _storageRaw     = String.fromEnvironment('FIREBASE_STORAGE_BUCKET');
   static const _senderIdRaw    = String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID');
   static const _appIdRaw       = String.fromEnvironment('FIREBASE_APP_ID');
+  static const _appIdWebRaw    = String.fromEnvironment('FIREBASE_APP_ID_WEB');
   static const _appIdAndroidRaw = String.fromEnvironment('FIREBASE_APP_ID_ANDROID');
 
   // ── Getters with Trimming (Sanitize values from CI/CD) ──────────────────
-  // Trimming is crucial because CI/CD secrets can sometimes contain 
-  // hidden leading/trailing whitespace which breaks Firebase initialization.
-  static String get apiKey      => _apiKeyRaw.trim();
-  static String get authDomain  => _authDomainRaw.trim();
-  static String get databaseUrl  => _databaseUrlRaw.trim();
-  static String get projectId    => _projectIdRaw.trim();
-  static String get storageBucket => _storageRaw.trim();
-  static String get senderId    => _senderIdRaw.trim();
-  static String get appId       => _appIdRaw.trim();
-  static String get appIdAndroid => _appIdAndroidRaw.trim();
+  // Trimming and cleaning is crucial because CI/CD secrets can sometimes 
+  // contain hidden whitespace, backticks, or quotes which break initialization.
+  static String _clean(String s) => s.trim().replaceAll('`', '').replaceAll('"', '').replaceAll("'", '');
+
+  static String get apiKey      => _clean(_apiKeyRaw);
+  static String get authDomain  => _clean(_authDomainRaw);
+  
+  static String get databaseUrl {
+    var url = _clean(_databaseUrlRaw);
+    // Remove trailing slash if present (can cause "Invalid token in path" error)
+    if (url.endsWith('/')) {
+      url = url.substring(0, url.length - 1);
+    }
+    return url;
+  }
+
+  static String get projectId    => _clean(_projectIdRaw);
+  static String get storageBucket => _clean(_storageRaw);
+  static String get senderId    => _clean(_senderIdRaw);
+
+  /// App ID with fallback: looks for FIREBASE_APP_ID then FIREBASE_APP_ID_WEB
+  static String get appId {
+    final id = _clean(_appIdRaw);
+    if (id.isNotEmpty) return id;
+    return _clean(_appIdWebRaw);
+  }
+
+  /// Android App ID with fallback
+  static String get appIdAndroid {
+    final id = _clean(_appIdAndroidRaw);
+    if (id.isNotEmpty) return id;
+    // Fallback to generic App ID if specific Android one is missing
+    return _clean(_appIdRaw);
+  }
 
   // ── RTDB node paths ───────────────────────────────────────────────────────
   static const nodeSettings           = 'settings';

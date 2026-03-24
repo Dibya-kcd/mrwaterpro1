@@ -42,8 +42,10 @@ jobs:
             exit 1
           fi
           
-          # Write the secret JSON directly to dart_defines.json
-          echo "$CONFIG_JSON" > dart_defines.json
+          # Write the secret JSON safely
+          cat <<EOF > dart_defines.json
+          $CONFIG_JSON
+          EOF
           
           # Check if the JSON is valid (optional but helpful for debugging)
           if ! command -v jq &> /dev/null; then
@@ -97,8 +99,10 @@ jobs:
             exit 1
           fi
           
-          # Write the secret JSON directly to dart_defines.json
-          echo "$CONFIG_JSON" > dart_defines.json
+          # Write the secret JSON safely
+          cat <<EOF > dart_defines.json
+          $CONFIG_JSON
+          EOF
           
           # Check if the JSON is valid (optional but helpful for debugging)
           if ! command -v jq &> /dev/null; then
