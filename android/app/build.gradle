@@ -1,9 +1,7 @@
 plugins {
     id "com.android.application"
-    id "kotlin-android"
-    // Flutter plugin — must come AFTER android + kotlin
+    id "org.jetbrains.kotlin.android"
     id "dev.flutter.flutter-gradle-plugin"
-    // Firebase Google Services — processes google-services.json
     id "com.google.gms.google-services"
 }
 
