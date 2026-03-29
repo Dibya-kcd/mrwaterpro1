@@ -29,7 +29,9 @@ def canSignRelease = System.getenv("KEYSTORE_STORE_PASSWORD") != null || (hasKey
 
 android {
     namespace "com.mrwater.mrwaterprov1"
-    compileSdk 34
+    // FIX: Bumped to 35 to satisfy firebase-bom 33.x and latest ML Kit requirements.
+    // compileSdk 34 caused implicit dependency conflicts with newer Firebase/MLKit AAR targets.
+    compileSdk 35
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -38,15 +40,22 @@ android {
         coreLibraryDesugaringEnabled true
     }
 
-    sourceSets {
-        main.java.srcDirs += 'src/main/java'
-        main.java.srcDirs += 'src/main/kotlin'
+    kotlinOptions {
+        jvmTarget = '1.8'
     }
+
+    // FIX: Removed duplicate/conflicting srcDirs block.
+    // The old config added both java and kotlin to main.java.srcDirs which can
+    // confuse the Android Gradle Plugin. The flutter plugin handles source sets
+    // automatically; manual overrides here are not needed and cause issues.
 
     defaultConfig {
         applicationId "com.mrwater.mrwaterprov1"
         minSdk 23
-        targetSdk 34
+        // FIX: targetSdk bumped to 35 to match compileSdk.
+        // Mismatched compileSdk/targetSdk causes lint and build warnings that
+        // can escalate to errors with certain AGP versions.
+        targetSdk 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
@@ -55,7 +64,10 @@ android {
     signingConfigs {
         release {
             if (System.getenv("KEYSTORE_STORE_PASSWORD") != null) {
-                storeFile file(System.getenv("KEYSTORE_FILE"))
+                // FIX: Keystore file path must be relative to the app/ directory.
+                // In CI the file is written to android/app/mrwater-release.jks,
+                // so file("mrwater-release.jks") resolves correctly from app/.
+                storeFile file(System.getenv("KEYSTORE_FILE") ?: "mrwater-release.jks")
                 storePassword System.getenv("KEYSTORE_STORE_PASSWORD")
                 keyAlias System.getenv("KEYSTORE_KEY_ALIAS")
                 keyPassword System.getenv("KEYSTORE_KEY_PASSWORD")
@@ -87,10 +99,15 @@ flutter {
 }
 
 dependencies {
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
+    // FIX: Bumped desugar lib to 2.1.4 — required when compileSdk = 35.
+    // The older 2.0.4 version causes a build error with AGP 8.x + compileSdk 35.
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+
+    // Firebase BOM — controls all Firebase library versions consistently.
     implementation platform('com.google.firebase:firebase-bom:33.5.1')
     implementation 'com.google.firebase:firebase-database-ktx'
     implementation 'com.google.firebase:firebase-auth-ktx'
     implementation 'com.google.firebase:firebase-storage-ktx'
+
     implementation 'androidx.multidex:multidex:2.0.1'
 }

@@ -1,0 +1,12 @@
+# Flutter/Dart generated files — must NEVER be committed
+# These are regenerated on every `flutter pub get`
+app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+
+# Local machine-specific config — contains absolute SDK paths
+local.properties
+
+# Build outputs
+/build/
+
+# Gradle
+.gradle/

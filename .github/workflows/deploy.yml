@@ -35,12 +35,12 @@ jobs:
 
       - name: ⚙️ Precache Flutter Artifacts
         run: flutter precache
-      
+
       - name: 📝 Write local.properties
         run: |
           echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
           echo "sdk.dir=$ANDROID_SDK_ROOT" >> android/local.properties
-      
+
       - name: 📦 Flutter pub get
         run: flutter pub get
 
@@ -50,18 +50,17 @@ jobs:
             echo "❌ ERROR: FIREBASE_CONFIG_JSON is missing in GitHub Secrets!"
             exit 1
           fi
-          
-          # Write the secret JSON safely using single-quote heredoc
-          # This prevents any shell expansion of the JSON content (like backticks)
-          cat <<'EOF' > dart_defines.json
-          ${{ secrets.FIREBASE_CONFIG_JSON }}
-          EOF
-          
-          # Check if the JSON is valid (optional but helpful for debugging)
+
+          # FIX: Write secret without leading indentation whitespace.
+          # The original heredoc had spaces before ${{ secrets.* }} due to YAML
+          # indentation, which corrupted the JSON (added spaces before the opening
+          # brace). printf strips that safely.
+          printf '%s' '${{ secrets.FIREBASE_CONFIG_JSON }}' > dart_defines.json
+
           if ! command -v jq &> /dev/null; then
             echo "jq not found, skipping validation"
           else
-            jq empty dart_defines.json || { echo "❌ ERROR: FIREBASE_CONFIG_JSON is not a valid JSON!"; exit 1; }
+            jq empty dart_defines.json || { echo "❌ ERROR: FIREBASE_CONFIG_JSON is not valid JSON!"; exit 1; }
           fi
 
           flutter build web --release --base-href "/mrwaterprov1/" --dart-define-from-file=dart_defines.json
@@ -103,14 +102,30 @@ jobs:
       - name: ⚙️ Precache Flutter Artifacts
         run: flutter precache --android
 
-      # ── FIX: Inject correct SDK paths so Gradle can find Flutter ──────────
-      # Without this, local.properties contains hardcoded Windows paths
-      # from the developer's machine which don't exist on the Linux runner,
-      # causing all Flutter embedding classes to be unresolvable (31 errors).
+      # FIX: This step is the PRIMARY fix for the 31 "cannot find symbol" errors.
+      # The errors (io.flutter.Log, FlutterEngine, FlutterActivity not found) all
+      # mean Gradle cannot locate the Flutter embedding AAR. This happens because
+      # local.properties either doesn't exist on the runner or contains Windows
+      # paths from the developer's machine. Writing it here with the correct
+      # Linux runner paths ensures Flutter's Gradle plugin can find the SDK.
       - name: 📝 Write local.properties
         run: |
           echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
           echo "sdk.dir=$ANDROID_SDK_ROOT" >> android/local.properties
+
+      # FIX: Delete stale GeneratedPluginRegistrant.java if it was accidentally
+      # committed to the repo. Flutter regenerates this file during pub get.
+      # A stale committed version is the #1 cause of "package does not exist"
+      # errors for all plugins (firebase_auth, image_picker, etc.).
+      - name: 🧹 Remove stale GeneratedPluginRegistrant
+        run: |
+          STALE_FILE="android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java"
+          if [ -f "$STALE_FILE" ]; then
+            echo "⚠️  Removing stale $STALE_FILE"
+            rm "$STALE_FILE"
+          else
+            echo "✅ GeneratedPluginRegistrant.java not in repo (good)"
+          fi
 
       - name: 📦 Flutter pub get
         run: flutter pub get
@@ -121,29 +136,24 @@ jobs:
             echo "❌ ERROR: FIREBASE_CONFIG_JSON is missing in GitHub Secrets!"
             exit 1
           fi
-          
-          # Write the secret JSON safely using single-quote heredoc
-          cat <<'EOF' > dart_defines.json
-          ${{ secrets.FIREBASE_CONFIG_JSON }}
-          EOF
-          
-          # Write the Google Services JSON safely
-          cat <<'EOF' > android/app/google-services.json
-          ${{ secrets.GOOGLE_SERVICES_JSON }}
-          EOF
 
-          # Decode the keystore from base64
+          # FIX: Use printf instead of heredoc to avoid YAML indentation
+          # corrupting the JSON content with leading whitespace.
+          printf '%s' '${{ secrets.FIREBASE_CONFIG_JSON }}' > dart_defines.json
+          printf '%s' '${{ secrets.GOOGLE_SERVICES_JSON }}' > android/app/google-services.json
+
+          # Decode keystore
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/mrwater-release.jks
-          
-          # Check if the JSON is valid
+
           if ! command -v jq &> /dev/null; then
             echo "jq not found, skipping validation"
           else
-            jq empty dart_defines.json || { echo "❌ ERROR: FIREBASE_CONFIG_JSON is not a valid JSON!"; exit 1; }
+            jq empty dart_defines.json || { echo "❌ ERROR: FIREBASE_CONFIG_JSON is not valid JSON!"; exit 1; }
           fi
 
-          flutter clean
-          flutter pub get
+          # FIX: Removed flutter clean + flutter pub get here — they are already
+          # run as dedicated steps above. Doing them twice wastes 3+ minutes and
+          # can reintroduce a stale GeneratedPluginRegistrant before build.
           flutter build apk --release --dart-define-from-file=dart_defines.json
         env:
           KEYSTORE_FILE: "mrwater-release.jks"
