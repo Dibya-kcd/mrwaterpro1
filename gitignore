@@ -11,6 +11,9 @@ android/*.keystore
 android/app/*.jks
 android/app/*.keystore
 
+
+
+
 # Gradle build cache — generated locally, never commit
 android/.gradle/
 .gradle/
