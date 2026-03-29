@@ -26,7 +26,7 @@ jobs:
         with:
           flutter-version: '3.29.0'
           channel: 'stable'
-          cache: true
+          cache: false
 
       - name: Flutter Doctor
         run: flutter doctor -v
@@ -80,9 +80,9 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.29.0'
+          flutter-version: '3.41.2'
           channel: 'stable'
-          cache: true
+          cache: false
 
       - name: Flutter Doctor
         run: flutter doctor -v
@@ -94,16 +94,8 @@ jobs:
         run: |
           echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
           echo "sdk.dir=$ANDROID_SDK_ROOT" >> android/local.properties
-
-      - name: Remove stale GeneratedPluginRegistrant
-        run: |
-          STALE_FILE="android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java"
-          if [ -f "$STALE_FILE" ]; then
-            echo "Removing stale $STALE_FILE"
-            rm "$STALE_FILE"
-          else
-            echo "GeneratedPluginRegistrant.java not present - good"
-          fi
+          echo "--- Verifying local.properties ---"
+          cat android/local.properties
 
       - name: Flutter pub get
         run: flutter pub get
@@ -122,6 +114,9 @@ jobs:
           else
             jq empty dart_defines.json || { echo "ERROR: FIREBASE_CONFIG_JSON is not valid JSON!"; exit 1; }
           fi
+          flutter clean
+          flutter pub get
+          rm -f android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
           flutter build apk --release --dart-define-from-file=dart_defines.json
         env:
           KEYSTORE_FILE: "mrwater-release.jks"
