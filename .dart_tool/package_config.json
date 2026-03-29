@@ -243,13 +243,13 @@
     },
     {
       "name": "google_mlkit_commons",
-      "rootUri": "file:///C:/Users/dibya/AppData/Local/Pub/Cache/hosted/pub.dev/google_mlkit_commons-0.8.1",
+      "rootUri": "file:///C:/Users/dibya/AppData/Local/Pub/Cache/hosted/pub.dev/google_mlkit_commons-0.9.0",
       "packageUri": "lib/",
       "languageVersion": "2.16"
     },
     {
       "name": "google_mlkit_text_recognition",
-      "rootUri": "file:///C:/Users/dibya/AppData/Local/Pub/Cache/hosted/pub.dev/google_mlkit_text_recognition-0.13.1",
+      "rootUri": "file:///C:/Users/dibya/AppData/Local/Pub/Cache/hosted/pub.dev/google_mlkit_text_recognition-0.14.0",
       "packageUri": "lib/",
       "languageVersion": "2.16"
     },
@@ -327,15 +327,9 @@
     },
     {
       "name": "intl",
-      "rootUri": "file:///C:/Users/dibya/AppData/Local/Pub/Cache/hosted/pub.dev/intl-0.19.0",
+      "rootUri": "file:///C:/Users/dibya/AppData/Local/Pub/Cache/hosted/pub.dev/intl-0.20.2",
       "packageUri": "lib/",
-      "languageVersion": "3.0"
-    },
-    {
-      "name": "js",
-      "rootUri": "file:///C:/Users/dibya/AppData/Local/Pub/Cache/hosted/pub.dev/js-0.7.2",
-      "packageUri": "lib/",
-      "languageVersion": "3.7"
+      "languageVersion": "3.3"
     },
     {
       "name": "json_annotation",
@@ -591,19 +585,19 @@
     },
     {
       "name": "speech_to_text",
-      "rootUri": "file:///C:/Users/dibya/AppData/Local/Pub/Cache/hosted/pub.dev/speech_to_text-6.6.2",
+      "rootUri": "file:///C:/Users/dibya/AppData/Local/Pub/Cache/hosted/pub.dev/speech_to_text-7.3.0",
       "packageUri": "lib/",
-      "languageVersion": "3.0"
-    },
-    {
-      "name": "speech_to_text_macos",
-      "rootUri": "file:///C:/Users/dibya/AppData/Local/Pub/Cache/hosted/pub.dev/speech_to_text_macos-1.1.0",
-      "packageUri": "lib/",
-      "languageVersion": "3.0"
+      "languageVersion": "3.3"
     },
     {
       "name": "speech_to_text_platform_interface",
       "rootUri": "file:///C:/Users/dibya/AppData/Local/Pub/Cache/hosted/pub.dev/speech_to_text_platform_interface-2.3.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    },
+    {
+      "name": "speech_to_text_windows",
+      "rootUri": "file:///C:/Users/dibya/AppData/Local/Pub/Cache/hosted/pub.dev/speech_to_text_windows-1.0.0+beta.8",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },

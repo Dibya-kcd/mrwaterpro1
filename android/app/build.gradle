@@ -5,12 +5,6 @@ plugins {
     id "com.google.gms.google-services"
 }
 
-// ── FIX: Manually inject Flutter Gradle scripts if plugin fails ──────────
-def flutterRoot = System.getenv("FLUTTER_ROOT")
-if (flutterRoot != null) {
-    apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
-}
-
 def localProperties = new Properties()
 def localPropertiesFile = rootProject.file('local.properties')
 if (localPropertiesFile.exists()) {
