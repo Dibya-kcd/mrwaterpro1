@@ -51,7 +51,7 @@ android {
 
     defaultConfig {
         applicationId "com.mrwater.mrwaterprov1"
-        minSdk 23
+        minSdkVersion flutter.minSdkVersion
         // FIX: targetSdk bumped to 35 to match compileSdk.
         // Mismatched compileSdk/targetSdk causes lint and build warnings that
         // can escalate to errors with certain AGP versions.
