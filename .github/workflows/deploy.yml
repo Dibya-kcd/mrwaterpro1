@@ -80,9 +80,9 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.29.0'
+          flutter-version: '3.41.2'
           channel: 'stable'
-          cache: true
+          cache: false
 
       - name: Flutter Doctor
         run: flutter doctor -v
@@ -100,17 +100,6 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      - name: Delete GeneratedPluginRegistrant
-        run: |
-          FILE="android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java"
-          rm -f "$FILE"
-          if [ -f "$FILE" ]; then
-            echo "ERROR: File still exists after delete!"
-            exit 1
-          else
-            echo "SUCCESS: GeneratedPluginRegistrant.java deleted or was not present"
-          fi
-
       - name: Build APK
         run: |
           if [ -z "${{ secrets.FIREBASE_CONFIG_JSON }}" ]; then
@@ -125,7 +114,9 @@ jobs:
           else
             jq empty dart_defines.json || { echo "ERROR: FIREBASE_CONFIG_JSON is not valid JSON!"; exit 1; }
           fi
-           flutter clean
+          flutter clean
+          flutter pub get
+          rm -f android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
           flutter build apk --release --dart-define-from-file=dart_defines.json
         env:
           KEYSTORE_FILE: "mrwater-release.jks"
