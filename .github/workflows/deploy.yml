@@ -125,6 +125,7 @@ jobs:
           else
             jq empty dart_defines.json || { echo "ERROR: FIREBASE_CONFIG_JSON is not valid JSON!"; exit 1; }
           fi
+           flutter clean
           flutter build apk --release --dart-define-from-file=dart_defines.json
         env:
           KEYSTORE_FILE: "mrwater-release.jks"
