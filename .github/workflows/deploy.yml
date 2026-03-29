@@ -94,19 +94,22 @@ jobs:
         run: |
           echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
           echo "sdk.dir=$ANDROID_SDK_ROOT" >> android/local.properties
-
-      - name: Remove stale GeneratedPluginRegistrant
-        run: |
-          STALE_FILE="android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java"
-          if [ -f "$STALE_FILE" ]; then
-            echo "Removing stale $STALE_FILE"
-            rm "$STALE_FILE"
-          else
-            echo "GeneratedPluginRegistrant.java not present - good"
-          fi
+          echo "--- Verifying local.properties ---"
+          cat android/local.properties
 
       - name: Flutter pub get
         run: flutter pub get
+
+      - name: Delete GeneratedPluginRegistrant
+        run: |
+          FILE="android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java"
+          rm -f "$FILE"
+          if [ -f "$FILE" ]; then
+            echo "ERROR: File still exists after delete!"
+            exit 1
+          else
+            echo "SUCCESS: GeneratedPluginRegistrant.java deleted or was not present"
+          fi
 
       - name: Build APK
         run: |
