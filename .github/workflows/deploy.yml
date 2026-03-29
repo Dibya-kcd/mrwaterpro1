@@ -28,12 +28,6 @@ jobs:
           channel: 'stable'
           cache: false
 
-      - name: Flutter Doctor
-        run: flutter doctor -v
-
-      - name: Precache Flutter Artifacts
-        run: flutter precache
-
       - name: Write local.properties
         run: |
           echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
@@ -45,15 +39,10 @@ jobs:
       - name: Build Web
         run: |
           if [ -z "${{ secrets.FIREBASE_CONFIG_JSON }}" ]; then
-            echo "ERROR: FIREBASE_CONFIG_JSON is missing in GitHub Secrets!"
+            echo "ERROR: FIREBASE_CONFIG_JSON is missing!"
             exit 1
           fi
           printf '%s' '${{ secrets.FIREBASE_CONFIG_JSON }}' > dart_defines.json
-          if ! command -v jq &> /dev/null; then
-            echo "jq not found, skipping validation"
-          else
-            jq empty dart_defines.json || { echo "ERROR: FIREBASE_CONFIG_JSON is not valid JSON!"; exit 1; }
-          fi
           flutter build web --release --base-href "/mrwaterprov1/" --dart-define-from-file=dart_defines.json
 
       - name: Deploy to GitHub Pages
@@ -80,12 +69,15 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.41.2'
+          flutter-version: '3.29.0'
           channel: 'stable'
           cache: false
 
       - name: Flutter Doctor
         run: flutter doctor -v
+
+      - name: Accept Android Licenses
+        run: yes | flutter doctor --android-licenses || true
 
       - name: Precache Flutter Android
         run: flutter precache --android
@@ -94,8 +86,10 @@ jobs:
         run: |
           echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
           echo "sdk.dir=$ANDROID_SDK_ROOT" >> android/local.properties
-          echo "--- Verifying local.properties ---"
           cat android/local.properties
+
+      - name: Flutter clean
+        run: flutter clean
 
       - name: Flutter pub get
         run: flutter pub get
@@ -103,20 +97,12 @@ jobs:
       - name: Build APK
         run: |
           if [ -z "${{ secrets.FIREBASE_CONFIG_JSON }}" ]; then
-            echo "ERROR: FIREBASE_CONFIG_JSON is missing in GitHub Secrets!"
+            echo "ERROR: FIREBASE_CONFIG_JSON is missing!"
             exit 1
           fi
           printf '%s' '${{ secrets.FIREBASE_CONFIG_JSON }}' > dart_defines.json
           printf '%s' '${{ secrets.GOOGLE_SERVICES_JSON }}' > android/app/google-services.json
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/mrwater-release.jks
-          if ! command -v jq &> /dev/null; then
-            echo "jq not found, skipping validation"
-          else
-            jq empty dart_defines.json || { echo "ERROR: FIREBASE_CONFIG_JSON is not valid JSON!"; exit 1; }
-          fi
-          flutter clean
-          flutter pub get
-          rm -f android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
           flutter build apk --release --dart-define-from-file=dart_defines.json
         env:
           KEYSTORE_FILE: "mrwater-release.jks"
