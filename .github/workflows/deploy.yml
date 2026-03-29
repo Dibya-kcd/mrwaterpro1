@@ -1,4 +1,4 @@
-name: 🌐 Deploy Web + 📱 Build APK
+name: Deploy Web + Build APK
 
 on:
   push:
@@ -10,150 +10,118 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-# ══════════════════════════════════════════════════════════════════════════
-# JOB 1 — Build Flutter Web + Deploy to GitHub Pages
-# ══════════════════════════════════════════════════════════════════════════
+
   deploy-web:
-    name: 🌐 Web → GitHub Pages
+    name: Web - GitHub Pages
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
 
-      - name: ⬇️ Checkout
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: 🐦 Setup Flutter
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.29.0'
           channel: 'stable'
           cache: true
 
-      - name: 🩺 Flutter Doctor
+      - name: Flutter Doctor
         run: flutter doctor -v
 
-      - name: ⚙️ Precache Flutter Artifacts
+      - name: Precache Flutter Artifacts
         run: flutter precache
 
-      - name: 📝 Write local.properties
+      - name: Write local.properties
         run: |
           echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
           echo "sdk.dir=$ANDROID_SDK_ROOT" >> android/local.properties
 
-      - name: 📦 Flutter pub get
+      - name: Flutter pub get
         run: flutter pub get
 
-      - name: 🔍 Verify and Build Web
+      - name: Build Web
         run: |
           if [ -z "${{ secrets.FIREBASE_CONFIG_JSON }}" ]; then
-            echo "❌ ERROR: FIREBASE_CONFIG_JSON is missing in GitHub Secrets!"
+            echo "ERROR: FIREBASE_CONFIG_JSON is missing in GitHub Secrets!"
             exit 1
           fi
-
-          # FIX: Write secret without leading indentation whitespace.
-          # The original heredoc had spaces before ${{ secrets.* }} due to YAML
-          # indentation, which corrupted the JSON (added spaces before the opening
-          # brace). printf strips that safely.
           printf '%s' '${{ secrets.FIREBASE_CONFIG_JSON }}' > dart_defines.json
-
           if ! command -v jq &> /dev/null; then
             echo "jq not found, skipping validation"
           else
-            jq empty dart_defines.json || { echo "❌ ERROR: FIREBASE_CONFIG_JSON is not valid JSON!"; exit 1; }
+            jq empty dart_defines.json || { echo "ERROR: FIREBASE_CONFIG_JSON is not valid JSON!"; exit 1; }
           fi
-
           flutter build web --release --base-href "/mrwaterprov1/" --dart-define-from-file=dart_defines.json
 
-      - name: 🚀 Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: build/web
           branch: gh-pages
 
-# ══════════════════════════════════════════════════════════════════════════
-# JOB 2 — Build Android APK (Secure)
-# ══════════════════════════════════════════════════════════════════════════
   build-apk:
-    name: 📱 Android APK
+    name: Android APK
     runs-on: ubuntu-latest
     steps:
 
-      - name: ⬇️ Checkout
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: ☕ Setup Java 17
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
           cache: 'gradle'
 
-      - name: 🐦 Setup Flutter
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.29.0'
           channel: 'stable'
           cache: true
 
-      - name: 🩺 Flutter Doctor
+      - name: Flutter Doctor
         run: flutter doctor -v
 
-      - name: ⚙️ Precache Flutter Artifacts
+      - name: Precache Flutter Android
         run: flutter precache --android
 
-      # FIX: This step is the PRIMARY fix for the 31 "cannot find symbol" errors.
-      # The errors (io.flutter.Log, FlutterEngine, FlutterActivity not found) all
-      # mean Gradle cannot locate the Flutter embedding AAR. This happens because
-      # local.properties either doesn't exist on the runner or contains Windows
-      # paths from the developer's machine. Writing it here with the correct
-      # Linux runner paths ensures Flutter's Gradle plugin can find the SDK.
-      - name: 📝 Write local.properties
+      - name: Write local.properties
         run: |
           echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
           echo "sdk.dir=$ANDROID_SDK_ROOT" >> android/local.properties
 
-      # FIX: Delete stale GeneratedPluginRegistrant.java if it was accidentally
-      # committed to the repo. Flutter regenerates this file during pub get.
-      # A stale committed version is the #1 cause of "package does not exist"
-      # errors for all plugins (firebase_auth, image_picker, etc.).
-      - name: 🧹 Remove stale GeneratedPluginRegistrant
+      - name: Remove stale GeneratedPluginRegistrant
         run: |
           STALE_FILE="android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java"
           if [ -f "$STALE_FILE" ]; then
-            echo "⚠️  Removing stale $STALE_FILE"
+            echo "Removing stale $STALE_FILE"
             rm "$STALE_FILE"
           else
-            echo "✅ GeneratedPluginRegistrant.java not in repo (good)"
+            echo "GeneratedPluginRegistrant.java not present - good"
           fi
 
-      - name: 📦 Flutter pub get
+      - name: Flutter pub get
         run: flutter pub get
 
-      - name: 🔍 Verify and Build APK
+      - name: Build APK
         run: |
           if [ -z "${{ secrets.FIREBASE_CONFIG_JSON }}" ]; then
-            echo "❌ ERROR: FIREBASE_CONFIG_JSON is missing in GitHub Secrets!"
+            echo "ERROR: FIREBASE_CONFIG_JSON is missing in GitHub Secrets!"
             exit 1
           fi
-
-          # FIX: Use printf instead of heredoc to avoid YAML indentation
-          # corrupting the JSON content with leading whitespace.
           printf '%s' '${{ secrets.FIREBASE_CONFIG_JSON }}' > dart_defines.json
           printf '%s' '${{ secrets.GOOGLE_SERVICES_JSON }}' > android/app/google-services.json
-
-          # Decode keystore
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/mrwater-release.jks
-
           if ! command -v jq &> /dev/null; then
             echo "jq not found, skipping validation"
           else
-            jq empty dart_defines.json || { echo "❌ ERROR: FIREBASE_CONFIG_JSON is not valid JSON!"; exit 1; }
+            jq empty dart_defines.json || { echo "ERROR: FIREBASE_CONFIG_JSON is not valid JSON!"; exit 1; }
           fi
-
-          # FIX: Removed flutter clean + flutter pub get here — they are already
-          # run as dedicated steps above. Doing them twice wastes 3+ minutes and
-          # can reintroduce a stale GeneratedPluginRegistrant before build.
           flutter build apk --release --dart-define-from-file=dart_defines.json
         env:
           KEYSTORE_FILE: "mrwater-release.jks"
@@ -161,14 +129,14 @@ jobs:
           KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
           KEYSTORE_KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
 
-      - name: 📤 Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: mrwater-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
 
-      - name: 🏷️ Create GitHub Release
+      - name: Create GitHub Release
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
@@ -176,7 +144,7 @@ jobs:
           name: "MrWater Build ${{ github.run_number }}"
           body: |
             ### Download APK
-            - **app-release.apk** — Universal installer for all Android phones
+            - app-release.apk - Universal installer for all Android phones
           files: |
             build/app/outputs/flutter-apk/app-release.apk
         env:
